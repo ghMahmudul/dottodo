@@ -66,7 +66,7 @@ export default function WorkspaceListItem({
             "absolute inset-0 flex items-center justify-center transition-opacity duration-150",
             menuOpen
               ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto",
+              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[:focus-visible]:opacity-100 has-[:focus-visible]:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto",
           )}
         >
           <ProjectContextMenu
@@ -82,6 +82,7 @@ export default function WorkspaceListItem({
               aria-label={`Options for ${workspace.name}`}
               className={cn(
                 "size-7 rounded-full text-sidebar-foreground hover:text-sidebar-foreground hover:bg-sidebar-foreground/10 active:bg-sidebar-foreground/10 aria-expanded:bg-sidebar-foreground/10",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar focus-visible:outline-none",
                 menuOpen && "bg-sidebar-foreground/10 text-sidebar-foreground",
               )}
             >

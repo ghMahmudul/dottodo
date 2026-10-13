@@ -46,14 +46,14 @@ export default function SidebarSectionItem({
         <Icon className="size-4 shrink-0" />
         <span className="flex-1 text-left truncate">{name}</span>
       </Button>
-      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex size-8 shrink-0 items-center justify-center pointer-events-none">
+      <div className="group/options absolute right-1 top-1/2 -translate-y-1/2 flex size-8 shrink-0 items-center justify-center pointer-events-none">
         {count !== undefined && count > 0 && (
           <span
             className={cn(
               "text-xs tabular-nums text-muted-foreground transition-opacity duration-150",
               menuOpen
                 ? "opacity-0"
-                : "group-hover:opacity-0 focus-within:opacity-0",
+                : "group-hover:opacity-0 group-has-[:focus-visible]/options:opacity-0 max-md:opacity-0",
             )}
           >
             {count}
@@ -64,7 +64,7 @@ export default function SidebarSectionItem({
             "absolute inset-0 flex items-center justify-center transition-opacity duration-150",
             menuOpen
               ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto",
+              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[:focus-visible]:opacity-100 has-[:focus-visible]:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto",
           )}
         >
           <ProjectContextMenu
@@ -79,6 +79,7 @@ export default function SidebarSectionItem({
               aria-label={`Options for ${name}`}
               className={cn(
                 "size-7 rounded-full text-sidebar-foreground hover:text-sidebar-foreground hover:bg-sidebar-foreground/10 active:bg-sidebar-foreground/10 aria-expanded:bg-sidebar-foreground/10",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar focus-visible:outline-none",
                 menuOpen && "bg-sidebar-foreground/10 text-sidebar-foreground",
               )}
             >

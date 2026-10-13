@@ -181,12 +181,18 @@ describe("SidebarSectionItem", () => {
 
     const countBadge = screen.getByText("5");
     expect(countBadge.classList.contains("opacity-0")).toBe(false);
+    expect(countBadge.className).not.toContain("focus-within");
     expect(optionsBtn.parentElement?.classList.contains("opacity-0")).toBe(
       true,
     );
     expect(
       optionsBtn.parentElement?.classList.contains("pointer-events-none"),
     ).toBe(true);
+    expect(optionsBtn.parentElement?.className).not.toContain("focus-within");
+    expect(optionsBtn.parentElement?.className).toContain(
+      "has-[:focus-visible]",
+    );
+    expect(optionsBtn.className).toContain("focus-visible:ring-2");
   });
 });
 

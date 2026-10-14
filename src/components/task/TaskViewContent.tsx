@@ -619,8 +619,8 @@ export default function TaskViewContent() {
           message={`Are you sure you want to permanently delete ${tasks.length} task${tasks.length !== 1 ? "s" : ""}? This action cannot be undone.`}
           confirmLabel="Empty"
           onClose={() => setShowEmptyTrashConfirm(false)}
-          onConfirm={() => {
-            handleEmptyTrash();
+          onConfirm={async () => {
+            await handleEmptyTrash();
             setShowEmptyTrashConfirm(false);
           }}
         />
@@ -632,8 +632,8 @@ export default function TaskViewContent() {
           message={`Are you sure you want to move ${tasks.length} completed task${tasks.length !== 1 ? "s" : ""} to trash?`}
           confirmLabel="Trash"
           onClose={() => setShowTrashCompletedConfirm(false)}
-          onConfirm={() => {
-            handleTrashCompleted();
+          onConfirm={async () => {
+            await handleTrashCompleted();
             setShowTrashCompletedConfirm(false);
           }}
         />

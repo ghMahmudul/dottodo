@@ -12,12 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { getDueDateColor } from "../../core/constants";
 import type { Priority } from "../../core/types";
 import { useTaskDraftStore } from "../../store/task-draft-store";
-import { useAllTags, useProjects } from "../../store/task-store";
+import { useAllTags, useProjects, useTaskStore } from "../../store/task-store";
 import { useWorkspaceStore } from "../../store/workspace-store";
 import { useSidebar } from "../layout/Layout";
 import PrioritySelect from "./PrioritySelect";
 import ProjectSelect from "./ProjectSelect";
 import TagSelect from "./TagSelect";
+import TaskShortcutDropdown from "./TaskShortcutDropdown";
+import { useTaskShortcuts } from "./useTaskShortcuts";
 
 export interface AddTaskModalProps {
   onClose?: () => void;
@@ -32,6 +34,7 @@ export interface AddTaskModalProps {
   defaultProject?: string;
   project?: string;
   onProjectChange?: (project: string) => void;
+  onCreateProject?: (name: string) => void | Promise<void>;
   title?: string;
   onTitleChange?: (title: string) => void;
   description?: string;
@@ -50,6 +53,7 @@ export default function AddTaskModal({
   defaultProject,
   project: propProject,
   onProjectChange: propOnProjectChange,
+  onCreateProject: propOnCreateProject,
   title: propTitle,
   onTitleChange: propOnTitleChange,
   description: propDescription,
@@ -64,6 +68,8 @@ export default function AddTaskModal({
   const storeDraft = useTaskDraftStore((s) => s.draft);
   const setDraftField = useTaskDraftStore((s) => s.setDraftField);
   const storeCloseModal = useTaskDraftStore((s) => s.closeModal);
+  const storeCreateProject = useTaskStore((s) => s.createProject);
+  const handleCreateProject = propOnCreateProject ?? storeCreateProject;
 
   const title = propTitle !== undefined ? propTitle : storeDraft.title;
   const onTitleChange =
@@ -114,6 +120,25 @@ export default function AddTaskModal({
   ).sort();
   const { isMobile } = useSidebar();
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const titleContainerRef = useRef<HTMLDivElement>(null);
+
+  const shortcuts = useTaskShortcuts({
+    title,
+    onTitleChange,
+    onPriorityChange,
+    onDueChange,
+    setProjectId,
+    onCreateProject: handleCreateProject,
+    selectedTags,
+    onTagsChange,
+    projects,
+    availableTags: allAvailableTags,
+    projectIcons: settings?.projectIcons,
+    tagIcons: settings?.tagIcons,
+    textareaRef: titleRef,
+    containerRef: titleContainerRef,
+  });
 
   const handleSubmit = () => {
     const trimmedTitle = title.trim();
@@ -131,12 +156,40 @@ export default function AddTaskModal({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (shortcuts.handleKeyDown(e)) {
+      return;
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     } else if (e.key === "Enter" && e.shiftKey) {
       e.preventDefault();
       descriptionRef.current?.focus();
+    }
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newTitle = e.target.value;
+    const cursorPos = e.target.selectionEnd;
+    onTitleChange(newTitle);
+    shortcuts.checkShortcuts(newTitle, cursorPos);
+  };
+
+  const handleTitleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    shortcuts.checkShortcuts(target.value, target.selectionEnd);
+  };
+
+  const handleTitleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      e.key === "ArrowLeft" ||
+      e.key === "ArrowRight" ||
+      e.key === "Home" ||
+      e.key === "End"
+    ) {
+      const target = e.currentTarget;
+      shortcuts.checkShortcuts(target.value, target.selectionEnd);
     }
   };
 
@@ -154,16 +207,42 @@ export default function AddTaskModal({
           <DialogTitle>Add Task</DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 md:px-6 pt-4 md:pt-5 overflow-hidden">
-          <Textarea
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Next thing to do"
-            rows={1}
-            autoFocus
-            className="w-full text-xl md:text-xl font-medium leading-7 bg-transparent outline-none resize-none border-0 rounded-none px-0 py-0 min-h-0 placeholder:text-muted-foreground/60"
-          />
+        <div className="px-5 md:px-6 pt-4 md:pt-5">
+          <div ref={titleContainerRef} className="relative">
+            <Textarea
+              ref={titleRef}
+              value={title}
+              onChange={handleTitleChange}
+              onKeyDown={handleKeyDown}
+              onKeyUp={handleTitleKeyUp}
+              onClick={handleTitleClick}
+              placeholder="Next thing to do"
+              rows={1}
+              autoFocus
+              aria-expanded={shortcuts.isOpen}
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              aria-controls={
+                shortcuts.isOpen ? "task-shortcut-dropdown" : undefined
+              }
+              aria-activedescendant={shortcuts.activeDescendantId}
+              className="w-full text-xl md:text-xl font-medium leading-7 bg-transparent outline-none resize-none border-0 rounded-none px-0 py-0 min-h-0 placeholder:text-muted-foreground/60"
+            />
+            {shortcuts.isOpen && shortcuts.activeShortcut && (
+              <TaskShortcutDropdown
+                isOpen={shortcuts.isOpen}
+                items={shortcuts.items}
+                activeIndex={shortcuts.activeIndex}
+                onSelectIndex={(index) => {
+                  shortcuts.items[index]?.action();
+                }}
+                onHoverIndex={shortcuts.setActiveIndex}
+                onClose={shortcuts.closeShortcut}
+                position={shortcuts.position}
+                textareaRef={titleRef}
+              />
+            )}
+          </div>
         </div>
 
         <div className="px-5 md:px-6 pt-2 flex-1 overflow-y-auto">

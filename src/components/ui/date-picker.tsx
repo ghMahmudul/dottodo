@@ -30,7 +30,7 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-const QUICK_OPTIONS: {
+export const DATE_QUICK_OPTIONS: {
   label: string;
   getValue: () => string;
   icon: React.ComponentType<{ className?: string }>;
@@ -56,6 +56,8 @@ const QUICK_OPTIONS: {
     icon: Ban,
   },
 ];
+
+const QUICK_OPTIONS = DATE_QUICK_OPTIONS;
 
 interface DatePickerProps {
   value: string;

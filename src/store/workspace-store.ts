@@ -110,6 +110,12 @@ interface WorkspaceState {
   setTagIcon: (tagName: string, icon?: string) => void;
   removeTagIcon: (tagName: string) => void;
   renameTagIcon: (oldName: string, newName: string, newIcon?: string) => void;
+  togglePinProject: (projectName: string) => void;
+  removePinnedProject: (projectName: string) => void;
+  renamePinnedProject: (oldName: string, newName: string) => void;
+  togglePinTag: (tagName: string) => void;
+  removePinnedTag: (tagName: string) => void;
+  renamePinnedTag: (oldName: string, newName: string) => void;
 }
 
 let settingsSavePromise = Promise.resolve();
@@ -159,6 +165,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               ? newSettings.tagIcons
               : currentTagIcons;
 
+          const currentPinnedProjects = Array.isArray(
+            state.settings?.pinnedProjects,
+          )
+            ? state.settings.pinnedProjects
+            : [];
+          const safePinnedProjects = Array.isArray(newSettings.pinnedProjects)
+            ? newSettings.pinnedProjects
+            : currentPinnedProjects;
+
+          const currentPinnedTags = Array.isArray(state.settings?.pinnedTags)
+            ? state.settings.pinnedTags
+            : [];
+          const safePinnedTags = Array.isArray(newSettings.pinnedTags)
+            ? newSettings.pinnedTags
+            : currentPinnedTags;
+
           return {
             settings: {
               ...DEFAULT_SETTINGS,
@@ -167,6 +189,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               tags: safeTags,
               projectIcons: safeProjectIcons,
               tagIcons: safeTagIcons,
+              pinnedProjects: safePinnedProjects,
+              pinnedTags: safePinnedTags,
             },
           };
         });
@@ -583,7 +607,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           tagIcons[newName] = tagIcons[oldName];
           delete tagIcons[oldName];
         }
-        get().setSettings({ tags: newTags, tagIcons });
+        const currentPinnedTags = Array.isArray(settings?.pinnedTags)
+          ? settings.pinnedTags
+          : [];
+        const pinnedTags = currentPinnedTags.map((t) =>
+          t === oldName ? newName : t,
+        );
+        get().setSettings({ tags: newTags, tagIcons, pinnedTags });
       },
 
       removeTag: (name) => {
@@ -592,7 +622,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const newTags = currentTags.filter((t) => t !== name);
         const tagIcons = { ...(settings?.tagIcons || {}) };
         delete tagIcons[name];
-        get().setSettings({ tags: newTags, tagIcons });
+        const currentPinnedTags = Array.isArray(settings?.pinnedTags)
+          ? settings.pinnedTags
+          : [];
+        const pinnedTags = currentPinnedTags.filter((t) => t !== name);
+        get().setSettings({ tags: newTags, tagIcons, pinnedTags });
       },
 
       setProjectIcon: (projectName, icon) => {
@@ -652,6 +686,76 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
         get().setSettings({ tagIcons });
       },
+
+      togglePinProject: (projectName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedProjects)
+          ? settings.pinnedProjects
+          : [];
+        const isPinned = current.includes(projectName);
+        const pinnedProjects = isPinned
+          ? current.filter((p) => p !== projectName)
+          : Array.from(new Set([...current, projectName]));
+        get().setSettings({ pinnedProjects });
+      },
+
+      removePinnedProject: (projectName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedProjects)
+          ? settings.pinnedProjects
+          : [];
+        if (!current.includes(projectName)) return;
+        get().setSettings({
+          pinnedProjects: current.filter((p) => p !== projectName),
+        });
+      },
+
+      renamePinnedProject: (oldName, newName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedProjects)
+          ? settings.pinnedProjects
+          : [];
+        if (!current.includes(oldName)) return;
+        const pinnedProjects = Array.from(
+          new Set(current.map((p) => (p === oldName ? newName : p))),
+        );
+        get().setSettings({ pinnedProjects });
+      },
+
+      togglePinTag: (tagName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedTags)
+          ? settings.pinnedTags
+          : [];
+        const isPinned = current.includes(tagName);
+        const pinnedTags = isPinned
+          ? current.filter((t) => t !== tagName)
+          : Array.from(new Set([...current, tagName]));
+        get().setSettings({ pinnedTags });
+      },
+
+      removePinnedTag: (tagName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedTags)
+          ? settings.pinnedTags
+          : [];
+        if (!current.includes(tagName)) return;
+        get().setSettings({
+          pinnedTags: current.filter((t) => t !== tagName),
+        });
+      },
+
+      renamePinnedTag: (oldName, newName) => {
+        const { settings } = get();
+        const current = Array.isArray(settings?.pinnedTags)
+          ? settings.pinnedTags
+          : [];
+        if (!current.includes(oldName)) return;
+        const pinnedTags = Array.from(
+          new Set(current.map((t) => (t === oldName ? newName : t))),
+        );
+        get().setSettings({ pinnedTags });
+      },
     }),
     {
       name: "dottodo-workspace",
@@ -671,6 +775,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           ...DEFAULT_SETTINGS,
           ...rawSettings,
           tags: Array.isArray(rawSettings?.tags) ? rawSettings.tags : [],
+          pinnedProjects: Array.isArray(rawSettings?.pinnedProjects)
+            ? rawSettings.pinnedProjects
+            : [],
+          pinnedTags: Array.isArray(rawSettings?.pinnedTags)
+            ? rawSettings.pinnedTags
+            : [],
           projectIcons:
             rawSettings?.projectIcons &&
             typeof rawSettings.projectIcons === "object"

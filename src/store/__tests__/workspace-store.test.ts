@@ -134,4 +134,87 @@ describe("workspace-store icon actions", () => {
       expect(state.settings.tagIcons?.urgent).toBeUndefined();
     });
   });
+
+  describe("pinned projects and tags", () => {
+    it("toggles pin status of a project", () => {
+      useWorkspaceStore.getState().togglePinProject("Project A");
+      expect(useWorkspaceStore.getState().settings.pinnedProjects).toContain(
+        "Project A",
+      );
+
+      useWorkspaceStore.getState().togglePinProject("Project A");
+      expect(
+        useWorkspaceStore.getState().settings.pinnedProjects,
+      ).not.toContain("Project A");
+    });
+
+    it("removes a pinned project", () => {
+      useWorkspaceStore.getState().togglePinProject("Project A");
+      useWorkspaceStore.getState().togglePinProject("Project B");
+      useWorkspaceStore.getState().removePinnedProject("Project A");
+
+      const pinned = useWorkspaceStore.getState().settings.pinnedProjects;
+      expect(pinned).not.toContain("Project A");
+      expect(pinned).toContain("Project B");
+    });
+
+    it("renames a pinned project while preserving order", () => {
+      useWorkspaceStore.getState().togglePinProject("Project A");
+      useWorkspaceStore.getState().togglePinProject("Project B");
+      useWorkspaceStore
+        .getState()
+        .renamePinnedProject("Project A", "Renamed A");
+
+      const pinned = useWorkspaceStore.getState().settings.pinnedProjects;
+      expect(pinned).toEqual(["Renamed A", "Project B"]);
+    });
+
+    it("toggles pin status of a tag", () => {
+      useWorkspaceStore.getState().togglePinTag("work");
+      expect(useWorkspaceStore.getState().settings.pinnedTags).toContain(
+        "work",
+      );
+
+      useWorkspaceStore.getState().togglePinTag("work");
+      expect(useWorkspaceStore.getState().settings.pinnedTags).not.toContain(
+        "work",
+      );
+    });
+
+    it("removes a pinned tag", () => {
+      useWorkspaceStore.getState().togglePinTag("work");
+      useWorkspaceStore.getState().togglePinTag("personal");
+      useWorkspaceStore.getState().removePinnedTag("work");
+
+      const pinned = useWorkspaceStore.getState().settings.pinnedTags;
+      expect(pinned).not.toContain("work");
+      expect(pinned).toContain("personal");
+    });
+
+    it("renames a pinned tag while preserving order", () => {
+      useWorkspaceStore.getState().togglePinTag("work");
+      useWorkspaceStore.getState().togglePinTag("personal");
+      useWorkspaceStore.getState().renamePinnedTag("work", "job");
+
+      const pinned = useWorkspaceStore.getState().settings.pinnedTags;
+      expect(pinned).toEqual(["job", "personal"]);
+    });
+
+    it("automatically cascades pinned tag when renameTag is called", () => {
+      useWorkspaceStore.getState().togglePinTag("work");
+      useWorkspaceStore.getState().renameTag("work", "career");
+
+      const state = useWorkspaceStore.getState();
+      expect(state.settings.pinnedTags).toContain("career");
+      expect(state.settings.pinnedTags).not.toContain("work");
+    });
+
+    it("automatically removes pinned tag when removeTag is called", () => {
+      useWorkspaceStore.getState().togglePinTag("urgent");
+      useWorkspaceStore.getState().removeTag("urgent");
+
+      const state = useWorkspaceStore.getState();
+      expect(state.settings.pinnedTags).not.toContain("urgent");
+    });
+  });
 });

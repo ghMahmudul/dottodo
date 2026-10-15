@@ -17,6 +17,8 @@ export interface SidebarSectionProps {
   onAdd?: () => void;
   onEdit?: (name: string) => void;
   onRename?: (name: string) => void;
+  onPin?: (name: string) => void;
+  isItemPinned?: (name: string) => boolean;
   onDelete?: (name: string) => void;
   onToggleCollapse?: (isCollapsed: boolean) => void;
   className?: string;
@@ -36,6 +38,8 @@ export default function SidebarSection({
   onAdd,
   onEdit,
   onRename,
+  onPin,
+  isItemPinned,
   onDelete,
   onToggleCollapse,
   className,
@@ -113,6 +117,8 @@ export default function SidebarSection({
                     isActive={activeView === `${type}:${item}`}
                     onClick={() => onNavigate?.(item)}
                     onEdit={() => (onEdit || onRename)?.(item)}
+                    onPin={onPin ? () => onPin(item) : undefined}
+                    isPinned={isItemPinned?.(item)}
                     onDelete={() => onDelete?.(item)}
                   />
                 );

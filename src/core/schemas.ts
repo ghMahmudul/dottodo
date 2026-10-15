@@ -18,6 +18,8 @@ export const settingsSchema = z.object({
   sprinkleEffect: z.boolean().default(true),
   projectIcons: z.record(z.string(), z.string()).default({}),
   tagIcons: z.record(z.string(), z.string()).default({}),
+  pinnedProjects: z.array(z.string()).default([]),
+  pinnedTags: z.array(z.string()).default([]),
 });
 
 export const renameSchema = z.object({

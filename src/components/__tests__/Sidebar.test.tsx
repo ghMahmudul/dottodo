@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "@/core/types";
+import { useTaskStore } from "@/store/task-store";
 import { useUIStore } from "@/store/ui-store";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import Sidebar from "../layout/Sidebar";
@@ -161,5 +162,148 @@ describe("Sidebar", () => {
     expect(
       screen.queryByRole("button", { name: /^trash/i }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Pinned section", () => {
+    beforeEach(() => {
+      useTaskStore.setState({
+        getProjects: () => ["Project Alpha", "Project Beta"],
+        getAllTags: () => ["work", "urgent"],
+        getTasksByView: () => [],
+      });
+    });
+
+    it("does not render Pinned section when nothing is pinned", () => {
+      useWorkspaceStore.setState({
+        settings: {
+          ...DEFAULT_SETTINGS,
+          pinnedProjects: [],
+          pinnedTags: [],
+        },
+      });
+
+      render(<Sidebar {...defaultProps} />);
+
+      expect(
+        screen.queryByRole("button", { name: /collapse pinned/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Projects")).toBeInTheDocument();
+      expect(screen.getByText("Tags")).toBeInTheDocument();
+    });
+
+    it("renders Pinned section before Projects when a project or tag is pinned", () => {
+      useWorkspaceStore.setState({
+        settings: {
+          ...DEFAULT_SETTINGS,
+          pinnedProjects: ["Project Alpha"],
+          pinnedTags: ["work"],
+        },
+      });
+
+      render(<Sidebar {...defaultProps} />);
+
+      expect(
+        screen.getByRole("button", { name: /collapse pinned/i }),
+      ).toBeInTheDocument();
+
+      const pinnedHeading = screen.getByText("Pinned");
+      const projectsHeading = screen.getByText("Projects");
+      const tagsHeading = screen.getByText("Tags");
+
+      // Verify DOM order: Pinned is before Projects, and Projects is before Tags
+      expect(
+        pinnedHeading.compareDocumentPosition(projectsHeading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        projectsHeading.compareDocumentPosition(tagsHeading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+
+      // Check pinned items are only in Pinned (excluded from Projects and Tags)
+      expect(screen.getAllByText("Project Alpha").length).toBe(1);
+      expect(screen.getAllByText("work").length).toBe(1);
+      expect(screen.getByText("Project Beta")).toBeInTheDocument();
+      expect(screen.getByText("urgent")).toBeInTheDocument();
+    });
+
+    it("pins a project from the Projects section menu and moves it exclusively to Pinned", async () => {
+      const user = userEvent.setup();
+      useWorkspaceStore.setState({
+        settings: {
+          ...DEFAULT_SETTINGS,
+          pinnedProjects: [],
+          pinnedTags: [],
+        },
+      });
+
+      render(<Sidebar {...defaultProps} />);
+
+      expect(
+        screen.queryByRole("button", { name: /collapse pinned/i }),
+      ).not.toBeInTheDocument();
+
+      // Click options on Project Alpha in Projects
+      const optionsBtn = screen.getByRole("button", {
+        name: "Options for Project Alpha",
+      });
+      await user.click(optionsBtn);
+
+      const pinItem = await screen.findByRole("menuitem", { name: "Pin" });
+      await user.click(pinItem);
+
+      // Now Pinned section should exist with Project Alpha
+      expect(
+        screen.getByRole("button", { name: /collapse pinned/i }),
+      ).toBeInTheDocument();
+      expect(useWorkspaceStore.getState().settings.pinnedProjects).toContain(
+        "Project Alpha",
+      );
+
+      // Project Alpha should only appear once (in Pinned section, not Projects)
+      expect(screen.getAllByText("Project Alpha").length).toBe(1);
+      // Project Beta should still be in Projects
+      expect(screen.getByText("Project Beta")).toBeInTheDocument();
+    });
+
+    it("unpins a project from the Pinned section menu and returns it to Projects", async () => {
+      const user = userEvent.setup();
+      useWorkspaceStore.setState({
+        settings: {
+          ...DEFAULT_SETTINGS,
+          pinnedProjects: ["Project Alpha"],
+          pinnedTags: [],
+        },
+      });
+
+      render(<Sidebar {...defaultProps} />);
+
+      expect(
+        screen.getByRole("button", { name: /collapse pinned/i }),
+      ).toBeInTheDocument();
+
+      // There is only 1 "Options for Project Alpha" button (in Pinned section)
+      const optionsBtn = screen.getByRole("button", {
+        name: "Options for Project Alpha",
+      });
+      await user.click(optionsBtn);
+
+      const unpinItem = await screen.findByRole("menuitem", { name: "Unpin" });
+      await user.click(unpinItem);
+
+      // Since that was the only pinned item, Pinned section should now be gone
+      expect(
+        screen.queryByRole("button", { name: /collapse pinned/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        useWorkspaceStore.getState().settings.pinnedProjects,
+      ).not.toContain("Project Alpha");
+
+      // Project Alpha should now be back in Projects
+      expect(screen.getByText("Project Alpha")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Options for Project Alpha" }),
+      ).toBeInTheDocument();
+    });
   });
 });

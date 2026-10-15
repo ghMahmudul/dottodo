@@ -13,6 +13,8 @@ export interface SidebarSectionItemProps {
   onClick: () => void;
   onEdit?: () => void;
   onRename?: () => void;
+  onPin?: () => void;
+  isPinned?: boolean;
   onDelete: () => void;
   className?: string;
 }
@@ -25,6 +27,8 @@ export default function SidebarSectionItem({
   onClick,
   onEdit,
   onRename,
+  onPin,
+  isPinned,
   onDelete,
   className,
 }: SidebarSectionItemProps) {
@@ -71,6 +75,8 @@ export default function SidebarSectionItem({
             open={menuOpen}
             onOpenChange={setMenuOpen}
             onEdit={handleEdit}
+            onPin={onPin}
+            isPinned={isPinned}
             onDelete={onDelete}
           >
             <Button

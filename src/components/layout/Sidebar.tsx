@@ -35,6 +35,7 @@ import { useWorkspaceStore } from "../../store/workspace-store";
 import DotTodoLogo from "../ui/DotTodoLogo";
 import { useSidebar } from "./Layout";
 import SidebarSection from "./SidebarSection";
+import SidebarSectionItem from "./SidebarSectionItem";
 import SidebarView from "./SidebarView";
 
 const VIEWS = [
@@ -109,6 +110,8 @@ export default function Sidebar({
     currentWorkspaceId,
     switchWorkspace,
     setView,
+    togglePinProject,
+    togglePinTag,
   } = useWorkspaceStore();
   const { getTasksByView, getProjects, getAllTags, loadFiles } = useTaskStore();
   const { isInstallable, isInstalled, installApp } = usePWAStore();
@@ -121,6 +124,28 @@ export default function Sidebar({
   const workspaceTags = Array.isArray(settings?.tags) ? settings.tags : [];
   const projects = getProjects();
   const tags = getAllTags(workspaceTags);
+
+  const pinnedProjects = Array.isArray(settings?.pinnedProjects)
+    ? settings.pinnedProjects
+    : [];
+  const pinnedTags = Array.isArray(settings?.pinnedTags)
+    ? settings.pinnedTags
+    : [];
+
+  const validPinnedProjects = pinnedProjects.filter((name) =>
+    projects.includes(name),
+  );
+  const validPinnedTags = pinnedTags.filter((name) => tags.includes(name));
+  const hasPinned =
+    validPinnedProjects.length > 0 || validPinnedTags.length > 0;
+
+  const validPinnedProjectsSet = new Set(validPinnedProjects);
+  const validPinnedTagsSet = new Set(validPinnedTags);
+
+  const unpinnedProjects = projects.filter(
+    (name) => !validPinnedProjectsSet.has(name),
+  );
+  const unpinnedTags = tags.filter((name) => !validPinnedTagsSet.has(name));
   const handleManageWorkspaces = () => {
     closeMobile();
     setView("picker");
@@ -242,12 +267,56 @@ export default function Sidebar({
             })}
           </div>
 
+          {hasPinned && (
+            <SidebarSection
+              title="Pinned"
+              storageKey="sidebar-pinned-collapsed"
+              onToggleCollapse={checkScroll}
+              className="mt-2.5"
+            >
+              {validPinnedProjects.map((projectName) => (
+                <SidebarSectionItem
+                  key={`pinned-project-${projectName}`}
+                  name={projectName}
+                  icon={getProjectIcon(projectName, settings?.projectIcons)}
+                  count={getTasksByView(`project:${projectName}`).length}
+                  isActive={activeView === `project:${projectName}`}
+                  onClick={() => {
+                    navigate(`/project/${encodeURIComponent(projectName)}`);
+                    closeMobile();
+                  }}
+                  onRename={() => onRenameProject(projectName)}
+                  onPin={() => togglePinProject(projectName)}
+                  isPinned={true}
+                  onDelete={() => onDeleteProject(projectName)}
+                />
+              ))}
+              {validPinnedTags.map((tagName) => (
+                <SidebarSectionItem
+                  key={`pinned-tag-${tagName}`}
+                  name={tagName}
+                  icon={getTagIcon(tagName, settings?.tagIcons)}
+                  count={getTasksByView(`tag:${tagName}`).length}
+                  isActive={activeView === `tag:${tagName}`}
+                  onClick={() => {
+                    navigate(`/tag/${encodeURIComponent(tagName)}`);
+                    closeMobile();
+                  }}
+                  onRename={() => onRenameTag(tagName)}
+                  onPin={() => togglePinTag(tagName)}
+                  isPinned={true}
+                  onDelete={() => onDeleteTag(tagName)}
+                />
+              ))}
+            </SidebarSection>
+          )}
+
           <SidebarSection
             title="Projects"
             storageKey="sidebar-projects-collapsed"
             icon={Folder}
             type="project"
-            items={projects}
+            items={unpinnedProjects}
             activeView={activeView}
             getItemIcon={(name) => getProjectIcon(name, settings?.projectIcons)}
             getTaskCount={(name) => getTasksByView(`project:${name}`).length}
@@ -257,9 +326,11 @@ export default function Sidebar({
             }}
             onAdd={onAddProjectClick}
             onRename={onRenameProject}
+            onPin={(name) => togglePinProject(name)}
+            isItemPinned={(name) => validPinnedProjectsSet.has(name)}
             onDelete={onDeleteProject}
             onToggleCollapse={checkScroll}
-            className="mt-2.5"
+            className={hasPinned ? "mt-2" : "mt-2.5"}
           />
 
           <SidebarSection
@@ -267,7 +338,7 @@ export default function Sidebar({
             storageKey="sidebar-tags-collapsed"
             icon={Tag}
             type="tag"
-            items={tags}
+            items={unpinnedTags}
             activeView={activeView}
             getItemIcon={(name) => getTagIcon(name, settings?.tagIcons)}
             getTaskCount={(name) => getTasksByView(`tag:${name}`).length}
@@ -277,6 +348,8 @@ export default function Sidebar({
             }}
             onAdd={onAddTagClick}
             onRename={onRenameTag}
+            onPin={(name) => togglePinTag(name)}
+            isItemPinned={(name) => validPinnedTagsSet.has(name)}
             onDelete={onDeleteTag}
             onToggleCollapse={checkScroll}
             className="mt-2"

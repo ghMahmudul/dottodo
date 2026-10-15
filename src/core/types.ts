@@ -63,6 +63,8 @@ export interface Settings {
   sprinkleEffect: boolean;
   projectIcons: Record<string, string>;
   tagIcons: Record<string, string>;
+  pinnedProjects: string[];
+  pinnedTags: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -75,4 +77,6 @@ export const DEFAULT_SETTINGS: Settings = {
   sprinkleEffect: true,
   projectIcons: {},
   tagIcons: {},
+  pinnedProjects: [],
+  pinnedTags: [],
 };

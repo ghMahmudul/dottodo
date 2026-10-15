@@ -132,6 +132,74 @@ describe("SidebarSectionItem", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
+  it("renders Pin option after Edit when not pinned and calls onPin on click", async () => {
+    const user = userEvent.setup();
+    const onPin = vi.fn();
+
+    render(
+      <SidebarSectionItem
+        name="Personal"
+        icon={Folder}
+        isActive={false}
+        onClick={vi.fn()}
+        onRename={vi.fn()}
+        onPin={onPin}
+        isPinned={false}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const optionsBtn = screen.getByRole("button", {
+      name: "Options for Personal",
+    });
+    await user.click(optionsBtn);
+
+    const menuItems = await screen.findAllByRole("menuitem");
+    expect(menuItems.map((m) => m.textContent?.trim())).toEqual([
+      "Edit",
+      "Pin",
+      "Delete",
+    ]);
+
+    const pinItem = screen.getByRole("menuitem", { name: "Pin" });
+    await user.click(pinItem);
+    expect(onPin).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders Unpin option after Edit when pinned and calls onPin on click", async () => {
+    const user = userEvent.setup();
+    const onPin = vi.fn();
+
+    render(
+      <SidebarSectionItem
+        name="Personal"
+        icon={Folder}
+        isActive={false}
+        onClick={vi.fn()}
+        onRename={vi.fn()}
+        onPin={onPin}
+        isPinned={true}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const optionsBtn = screen.getByRole("button", {
+      name: "Options for Personal",
+    });
+    await user.click(optionsBtn);
+
+    const menuItems = await screen.findAllByRole("menuitem");
+    expect(menuItems.map((m) => m.textContent?.trim())).toEqual([
+      "Edit",
+      "Unpin",
+      "Delete",
+    ]);
+
+    const unpinItem = screen.getByRole("menuitem", { name: "Unpin" });
+    await user.click(unpinItem);
+    expect(onPin).toHaveBeenCalledTimes(1);
+  });
+
   it("shows count and keeps options button hidden when project is selected", () => {
     render(
       <SidebarSectionItem
@@ -291,5 +359,41 @@ describe("SidebarSection", () => {
 
     await user.click(screen.getByText("work"));
     expect(onNavigate).toHaveBeenCalledWith("work");
+  });
+
+  it("forwards onPin and isItemPinned to items", async () => {
+    const user = userEvent.setup();
+    const onPin = vi.fn();
+
+    render(
+      <SidebarSection
+        title="Projects"
+        icon={Folder}
+        type="project"
+        items={["Pinned Project", "Unpinned Project"]}
+        onPin={onPin}
+        isItemPinned={(name) => name === "Pinned Project"}
+      />,
+    );
+
+    const pinnedOptionsBtn = screen.getByRole("button", {
+      name: "Options for Pinned Project",
+    });
+    await user.click(pinnedOptionsBtn);
+    expect(
+      await screen.findByRole("menuitem", { name: "Unpin" }),
+    ).toBeInTheDocument();
+
+    // Close and open unpinned options
+    await user.click(pinnedOptionsBtn); // toggle off
+
+    const unpinnedOptionsBtn = screen.getByRole("button", {
+      name: "Options for Unpinned Project",
+    });
+    await user.click(unpinnedOptionsBtn);
+    const pinItem = await screen.findByRole("menuitem", { name: "Pin" });
+    expect(pinItem).toBeInTheDocument();
+    await user.click(pinItem);
+    expect(onPin).toHaveBeenCalledWith("Unpinned Project");
   });
 });

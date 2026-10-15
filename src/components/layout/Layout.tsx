@@ -94,7 +94,8 @@ export default function Layout({ children }: LayoutProps) {
   const renameProjectIcon = useWorkspaceStore((s) => s.renameProjectIcon);
   const setTagIcon = useWorkspaceStore((s) => s.setTagIcon);
   const removeTagIcon = useWorkspaceStore((s) => s.removeTagIcon);
-  const renameTagIcon = useWorkspaceStore((s) => s.renameTagIcon);
+  const renamePinnedProject = useWorkspaceStore((s) => s.renamePinnedProject);
+  const removePinnedProject = useWorkspaceStore((s) => s.removePinnedProject);
 
   const handleSearch = useCallback(() => {
     setSearchOpen(true);
@@ -133,6 +134,7 @@ export default function Layout({ children }: LayoutProps) {
     try {
       if (oldName !== newName) {
         await renameProject(oldName, newName);
+        renamePinnedProject(oldName, newName);
       }
       if (newIcon !== undefined) {
         if (oldName !== newName) {
@@ -157,6 +159,7 @@ export default function Layout({ children }: LayoutProps) {
     try {
       await deleteProject(name);
       removeProjectIcon(name);
+      removePinnedProject(name);
       if (location.pathname === `/project/${encodeURIComponent(name)}`) {
         navigate("/all");
       }
@@ -192,8 +195,6 @@ export default function Layout({ children }: LayoutProps) {
           removeTagIcon(oldName);
         }
         setTagIcon(newName, newIcon || undefined);
-      } else if (oldName !== newName) {
-        renameTagIcon(oldName, newName);
       }
       setTagRenameTarget(null);
     } catch (e) {
@@ -205,7 +206,6 @@ export default function Layout({ children }: LayoutProps) {
     if (!tagDeleteTarget) return;
     const name = tagDeleteTarget;
     removeTagFromSettings(name);
-    removeTagIcon(name);
     await removeTagFromAllTasks(name);
     if (location.pathname === `/tag/${encodeURIComponent(name)}`) {
       navigate("/all");

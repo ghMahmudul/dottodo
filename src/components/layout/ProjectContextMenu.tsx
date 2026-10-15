@@ -9,6 +9,8 @@ export interface ProjectContextMenuProps {
   children: React.ReactElement;
   onEdit?: () => void;
   onRename?: () => void;
+  onPin?: () => void;
+  isPinned?: boolean;
   onDelete: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -19,6 +21,8 @@ export default function ProjectContextMenu({
   children,
   onEdit,
   onRename,
+  onPin,
+  isPinned,
   onDelete,
   open,
   onOpenChange,
@@ -42,6 +46,16 @@ export default function ProjectContextMenu({
             }}
           >
             Edit
+          </DropdownMenuItem>
+        )}
+        {onPin && (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onPin();
+            }}
+          >
+            {isPinned ? "Unpin" : "Pin"}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

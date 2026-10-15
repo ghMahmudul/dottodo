@@ -185,6 +185,12 @@ interface WorkspaceState {
   addTag(name)                      → void
   renameTag(oldName, newName)       → void
   removeTag(name)                   → void
+  togglePinProject(name)            → void
+  removePinnedProject(name)         → void
+  renamePinnedProject(old, new)     → void
+  togglePinTag(name)                → void
+  removePinnedTag(name)             → void
+  renamePinnedTag(old, new)         → void
 }
 ```
 

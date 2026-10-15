@@ -28,6 +28,7 @@ export interface UseTaskShortcutsOptions {
   onDueChange: (due: string) => void;
   setProjectId: (projectId: string) => void;
   onCreateProject?: (name: string) => void | Promise<void>;
+  onCreateTag?: (name: string) => void | Promise<void>;
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;
   projects: string[];
@@ -45,6 +46,7 @@ export function useTaskShortcuts({
   onDueChange,
   setProjectId,
   onCreateProject,
+  onCreateTag,
   selectedTags,
   onTagsChange,
   projects,
@@ -307,11 +309,16 @@ export function useTaskShortcuts({
           id: `create-tag-${q}`,
           label: `Create Tag "${rawTag}"`,
           icon: Plus,
-          action: () => {
-            if (!selectedTags.includes(rawTag)) {
-              onTagsChange([...selectedTags, rawTag]);
+          action: async () => {
+            try {
+              await onCreateTag?.(rawTag);
+              if (!selectedTags.includes(rawTag)) {
+                onTagsChange([...selectedTags, rawTag]);
+              }
+              removeCurrentToken();
+            } catch (e) {
+              toast.error((e as Error).message || "Failed to create tag");
             }
-            removeCurrentToken();
           },
         });
       }
@@ -333,6 +340,7 @@ export function useTaskShortcuts({
     onDueChange,
     setProjectId,
     onCreateProject,
+    onCreateTag,
     onTagsChange,
   ]);
 

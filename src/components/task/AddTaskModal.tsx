@@ -35,6 +35,7 @@ export interface AddTaskModalProps {
   project?: string;
   onProjectChange?: (project: string) => void;
   onCreateProject?: (name: string) => void | Promise<void>;
+  onCreateTag?: (name: string) => void | Promise<void>;
   title?: string;
   onTitleChange?: (title: string) => void;
   description?: string;
@@ -54,6 +55,7 @@ export default function AddTaskModal({
   project: propProject,
   onProjectChange: propOnProjectChange,
   onCreateProject: propOnCreateProject,
+  onCreateTag: propOnCreateTag,
   title: propTitle,
   onTitleChange: propOnTitleChange,
   description: propDescription,
@@ -70,6 +72,8 @@ export default function AddTaskModal({
   const storeCloseModal = useTaskDraftStore((s) => s.closeModal);
   const storeCreateProject = useTaskStore((s) => s.createProject);
   const handleCreateProject = propOnCreateProject ?? storeCreateProject;
+  const storeAddTag = useWorkspaceStore((s) => s.addTag);
+  const handleCreateTag = propOnCreateTag ?? storeAddTag;
 
   const title = propTitle !== undefined ? propTitle : storeDraft.title;
   const onTitleChange =
@@ -130,6 +134,7 @@ export default function AddTaskModal({
     onDueChange,
     setProjectId,
     onCreateProject: handleCreateProject,
+    onCreateTag: handleCreateTag,
     selectedTags,
     onTagsChange,
     projects,

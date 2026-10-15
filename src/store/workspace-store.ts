@@ -589,10 +589,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       addTag: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
         const { settings } = get();
         const currentTags = Array.isArray(settings?.tags) ? settings.tags : [];
-        if (currentTags.includes(name)) return;
-        const newTags = [...currentTags, name].sort();
+        if (currentTags.includes(trimmed)) return;
+        const newTags = [...currentTags, trimmed].sort();
         get().setSettings({ tags: newTags });
       },
 

@@ -309,15 +309,17 @@ describe("AddTaskModal", () => {
       expect(onTitleChange).toHaveBeenCalledWith("");
     });
 
-    it("shows 'Create Tag \"tagName\"' option when typing a new tag after '#'", () => {
+    it("shows 'Create Tag \"tagName\"' option when typing a new tag after '#'", async () => {
       const onTitleChange = vi.fn();
       const onTagsChange = vi.fn();
+      const onCreateTag = vi.fn().mockResolvedValue(undefined);
       render(
         <AddTaskModal
           {...defaultProps}
           title=""
           onTitleChange={onTitleChange}
           onTagsChange={onTagsChange}
+          onCreateTag={onCreateTag}
         />,
       );
       const titleInput = screen.getByPlaceholderText("Next thing to do");
@@ -330,8 +332,11 @@ describe("AddTaskModal", () => {
       expect(createOption).toBeInTheDocument();
       fireEvent.click(createOption);
 
-      expect(onTagsChange).toHaveBeenCalledWith(["custom"]);
-      expect(onTitleChange).toHaveBeenCalledWith("");
+      await waitFor(() => {
+        expect(onCreateTag).toHaveBeenCalledWith("custom");
+        expect(onTagsChange).toHaveBeenCalledWith(["custom"]);
+        expect(onTitleChange).toHaveBeenCalledWith("");
+      });
     });
 
     it("closes shortcut dropdown on Escape without closing modal", () => {

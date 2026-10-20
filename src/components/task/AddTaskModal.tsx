@@ -29,6 +29,7 @@ export interface AddTaskModalProps {
     projectId: string;
     priority?: Priority;
     due?: string;
+    repeat?: string;
     tags?: string[];
   }) => void;
   defaultProject?: string;
@@ -94,6 +95,9 @@ export default function AddTaskModal({
   const onDueChange =
     propOnDueChange ?? ((v: string) => setDraftField("due", v));
 
+  const repeat = storeDraft.repeat ?? "";
+  const onRepeatChange = (v: string) => setDraftField("repeat", v || undefined);
+
   const selectedTags =
     propSelectedTags !== undefined ? propSelectedTags : storeDraft.tags;
   const onTagsChange =
@@ -155,6 +159,7 @@ export default function AddTaskModal({
       projectId,
       priority,
       due: due || undefined,
+      repeat: repeat || undefined,
       tags: selectedTags.length > 0 ? selectedTags : undefined,
     });
     handleClose();
@@ -275,6 +280,8 @@ export default function AddTaskModal({
               <DatePicker
                 value={due}
                 onChange={onDueChange}
+                repeat={repeat}
+                onRepeatChange={onRepeatChange}
                 triggerClassName={
                   due ? `h-8 gap-1.5 ${getDueDateColor(due)}` : "h-8"
                 }

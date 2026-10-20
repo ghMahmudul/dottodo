@@ -17,6 +17,7 @@ import { useLocation, useParams } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getProjectIcon, getTagIcon } from "../../core/icons";
+import { getNextDueDate } from "../../core/repeat-utils";
 import { filterCompletedTasks } from "../../core/task-filter";
 import { sortTasks } from "../../core/task-sort";
 import type { Priority, TodoItem } from "../../core/types";
@@ -247,6 +248,7 @@ export default function TaskViewContent() {
       projectId: string;
       priority?: Priority;
       due?: string;
+      repeat?: string;
       tags?: string[];
     }) => {
       const now = new Date().toISOString();
@@ -266,6 +268,7 @@ export default function TaskViewContent() {
           ...(isArchivedView ? { archived: now } : {}),
           priority: fields.priority,
           due: fields.due,
+          repeat: fields.repeat,
           tags: fields.tags,
         },
         body: fields.body,
@@ -300,6 +303,46 @@ export default function TaskViewContent() {
             completed: undefined,
           },
         });
+      } else if (task.metadata.repeat) {
+        const nextDue = getNextDueDate(task.metadata.due, task.metadata.repeat);
+        const newTaskId = nanoid();
+        const {
+          repeat: _repeatRule,
+          completed: _completed,
+          archived: _archived,
+          trashed: _trashed,
+          ...cleanMeta
+        } = task.metadata;
+
+        const nextTask: TodoItem = {
+          id: newTaskId,
+          title: task.title,
+          state: "open",
+          projectId: task.projectId,
+          parentId: task.parentId,
+          metadata: {
+            ...cleanMeta,
+            id: newTaskId,
+            created: now,
+            due: nextDue,
+            repeat: task.metadata.repeat,
+          },
+          body: task.body,
+          children: [],
+          order: task.order,
+          attachments: [...task.attachments],
+        };
+
+        const { repeat: _r, ...completedMeta } = task.metadata;
+        await updateTask(task.id, {
+          state: "done",
+          metadata: {
+            ...completedMeta,
+            completed: now,
+          },
+        });
+
+        await addTask(nextTask, task.projectId);
       } else {
         await updateTask(task.id, {
           state: "done",
@@ -314,7 +357,7 @@ export default function TaskViewContent() {
         setSelectedTaskId(null);
       }
     },
-    [activeView, selectedTaskId, updateTask],
+    [activeView, selectedTaskId, updateTask, addTask],
   );
 
   const handleUpdate = useCallback(

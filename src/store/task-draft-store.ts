@@ -11,6 +11,7 @@ export interface TaskDraft {
   projectId: string;
   priority?: Priority;
   due?: string;
+  repeat?: string;
   tags: string[];
 }
 
@@ -57,6 +58,7 @@ export function createDefaultDraft(activeView = "inbox"): TaskDraft {
     projectId: getTargetProject(activeView),
     priority: undefined,
     due: getDefaultDue(activeView),
+    repeat: undefined,
     tags: getDefaultTags(activeView),
   };
 }

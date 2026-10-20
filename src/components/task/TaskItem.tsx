@@ -1,4 +1,10 @@
-import { Calendar, CheckCircle2, Circle, CircleDashed } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Circle,
+  CircleDashed,
+  Repeat,
+} from "lucide-react";
 import { memo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -150,6 +156,7 @@ function TaskItemComponent({
             )}
 
             {(task.metadata.due ||
+              task.metadata.repeat ||
               (task.metadata.tags && task.metadata.tags.length > 0)) && (
               <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                 {task.metadata.due && (
@@ -162,6 +169,13 @@ function TaskItemComponent({
                   >
                     <Calendar className="size-3" />
                     {formatDate(task.metadata.due)}
+                    {task.metadata.repeat && <Repeat className="size-3" />}
+                  </span>
+                )}
+                {!task.metadata.due && task.metadata.repeat && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Repeat className="size-3" />
+                    Repeats
                   </span>
                 )}
                 {task.metadata.tags &&

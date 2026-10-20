@@ -115,6 +115,15 @@ export default function TaskDetailPanel({
     [task.id, task.metadata, onUpdate],
   );
 
+  const handleRepeatChange = useCallback(
+    (value: string) => {
+      onUpdate(task.id, {
+        metadata: { ...task.metadata, repeat: value || undefined },
+      });
+    },
+    [task.id, task.metadata, onUpdate],
+  );
+
   const handleProjectChange = useCallback(
     (projectId: string) => {
       onUpdate(task.id, { projectId });
@@ -262,6 +271,8 @@ export default function TaskDetailPanel({
             <DatePicker
               value={task.metadata.due ?? ""}
               onChange={handleDateChange}
+              repeat={task.metadata.repeat ?? ""}
+              onRepeatChange={handleRepeatChange}
               variant="ghost"
               placeholder="Date"
               triggerClassName={`h-8 gap-1.5 ${

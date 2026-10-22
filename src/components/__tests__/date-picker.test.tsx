@@ -239,4 +239,114 @@ describe("DatePicker", () => {
       screen.getByRole("button", { name: /repeat: every 2 weeks/i }),
     ).toBeInTheDocument();
   });
+
+  it("automatically sets due date to today when repeat is selected and value is empty", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onRepeatChange = vi.fn();
+
+    render(
+      <DatePicker
+        value=""
+        onChange={onChange}
+        placeholder="Date"
+        repeat=""
+        onRepeatChange={onRepeatChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /date/i }));
+    await user.click(screen.getByRole("button", { name: /^repeat$/i }));
+
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: /daily/i }),
+    );
+
+    expect(onRepeatChange).toHaveBeenCalledWith("daily");
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
+  });
+
+  it("preserves existing date when repeat is selected", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onRepeatChange = vi.fn();
+
+    render(
+      <DatePicker
+        value="2026-12-25"
+        onChange={onChange}
+        placeholder="Date"
+        repeat=""
+        onRepeatChange={onRepeatChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /date: dec 25/i }));
+    await user.click(screen.getByRole("button", { name: /^repeat$/i }));
+
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: /weekly/i }),
+    );
+
+    expect(onRepeatChange).toHaveBeenCalledWith("weekly");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("clears repeat when 'No Date' option is clicked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onRepeatChange = vi.fn();
+
+    render(
+      <DatePicker
+        value="2026-12-25"
+        onChange={onChange}
+        placeholder="Date"
+        repeat="daily"
+        onRepeatChange={onRepeatChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /date: dec 25, repeats daily/i }),
+    );
+
+    const noDateOption = await screen.findByRole("button", {
+      name: /no date/i,
+    });
+    await user.click(noDateOption);
+
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(onRepeatChange).toHaveBeenCalledWith("");
+  });
+
+  it("uses onDateAndRepeatChange for atomic updates if provided", async () => {
+    const user = userEvent.setup();
+    const onDateAndRepeatChange = vi.fn();
+
+    render(
+      <DatePicker
+        value=""
+        onChange={vi.fn()}
+        placeholder="Date"
+        repeat=""
+        onDateAndRepeatChange={onDateAndRepeatChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /date/i }));
+    await user.click(screen.getByRole("button", { name: /^repeat$/i }));
+
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: /daily/i }),
+    );
+
+    expect(onDateAndRepeatChange).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      "daily",
+    );
+  });
 });

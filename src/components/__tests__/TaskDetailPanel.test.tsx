@@ -454,4 +454,97 @@ describe("TaskDetailPanel", () => {
     expect(onToggleState).toHaveBeenCalledWith(doneTask);
     expect(useSprinkleStore.getState().latestBurst).toBeNull();
   });
+
+  it("automatically sets due date when repeat is selected on an undated task", async () => {
+    const user = userEvent.setup();
+    const onUpdate = vi.fn();
+
+    const undatedTask: TodoItem = {
+      ...mockTask,
+      metadata: {
+        ...mockTask.metadata,
+        due: undefined,
+        repeat: undefined,
+      },
+    };
+
+    render(
+      <TaskDetailPanel
+        task={undatedTask}
+        onClose={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const dateButton = screen.getByRole("button", { name: /^date$/i });
+    await user.click(dateButton);
+
+    const repeatButton = await screen.findByRole("button", {
+      name: /^repeat$/i,
+    });
+    await user.click(repeatButton);
+
+    const dailyItem = await screen.findByRole("menuitemradio", {
+      name: /daily/i,
+    });
+    await user.click(dailyItem);
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          repeat: "daily",
+          due: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        }),
+      }),
+    );
+  });
+
+  it("clears repeat when due date is removed via No Date", async () => {
+    const user = userEvent.setup();
+    const onUpdate = vi.fn();
+
+    const repeatingTask: TodoItem = {
+      ...mockTask,
+      metadata: {
+        ...mockTask.metadata,
+        due: "2026-10-22",
+        repeat: "daily",
+      },
+    };
+
+    render(
+      <TaskDetailPanel
+        task={repeatingTask}
+        onClose={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const dateButton = screen.getByRole("button", {
+      name: /repeats daily/i,
+    });
+    await user.click(dateButton);
+
+    const noDateOption = await screen.findByRole("button", {
+      name: /no date/i,
+    });
+    await user.click(noDateOption);
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          due: undefined,
+          repeat: undefined,
+        }),
+      }),
+    );
+  });
 });

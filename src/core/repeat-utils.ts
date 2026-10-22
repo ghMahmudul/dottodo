@@ -78,6 +78,39 @@ export function formatRepeatLabel(value: string): string {
   }
 }
 
+/**
+ * Calculates the initial due date anchor when a repeat rule is applied to an undated task.
+ * Follows industry standards: defaults to today, or the first matching day (e.g. next weekday
+ * if selected on a weekend).
+ */
+export function getInitialDueDate(
+  repeatValue: string,
+  fromDate: Date | string = new Date(),
+): string {
+  const rule = parseRepeatRule(repeatValue);
+  let target: Date;
+  if (typeof fromDate === "string") {
+    const parts = fromDate.split("-").map(Number);
+    target = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1);
+  } else {
+    target = new Date(fromDate);
+  }
+  target.setHours(0, 0, 0, 0);
+
+  if (rule?.frequency === "weekdays") {
+    const day = target.getDay();
+    if (day === 6) {
+      // Saturday -> move to Monday (+2 days)
+      target.setDate(target.getDate() + 2);
+    } else if (day === 0) {
+      // Sunday -> move to Monday (+1 day)
+      target.setDate(target.getDate() + 1);
+    }
+  }
+
+  return formatLocalDate(target);
+}
+
 export function getNextDueDate(
   currentDue: string | undefined,
   repeatValue: string,

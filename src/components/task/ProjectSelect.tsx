@@ -15,6 +15,8 @@ interface ProjectSelectProps {
   projects: string[];
   variant?: "toolbar" | "inline";
   isDone?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function ProjectSelect({
@@ -23,13 +25,15 @@ export default function ProjectSelect({
   projects,
   variant = "toolbar",
   isDone = false,
+  open,
+  onOpenChange,
 }: ProjectSelectProps) {
   const settings = useWorkspaceStore((s) => s.settings);
   const isInbox = value.toLowerCase() === "inbox";
   const ValueIcon = getProjectIcon(value, settings?.projectIcons);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
           <Button

@@ -15,6 +15,8 @@ interface TagSelectProps {
   availableTags: string[];
   variant?: "toolbar" | "inline";
   isDone?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function TagSelect({
@@ -23,6 +25,8 @@ export default function TagSelect({
   availableTags,
   variant = "toolbar",
   isDone = false,
+  open,
+  onOpenChange,
 }: TagSelectProps) {
   const settings = useWorkspaceStore((s) => s.settings);
 
@@ -42,7 +46,7 @@ export default function TagSelect({
       : Tag;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
           <Button

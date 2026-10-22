@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatRepeatLabel,
+  getInitialDueDate,
   getNextDueDate,
   parseRepeatRule,
 } from "../repeat-utils";
@@ -213,5 +214,53 @@ describe("getNextDueDate", () => {
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
     expect(next).toBe(`${y}-${m}-${d}`);
+  });
+});
+
+describe("getInitialDueDate", () => {
+  it("defaults to today for daily preset", () => {
+    const today = new Date(2026, 9, 22); // Thursday
+    expect(getInitialDueDate("daily", today)).toBe("2026-10-22");
+  });
+
+  it("defaults to today for weekly preset", () => {
+    const today = new Date(2026, 9, 22);
+    expect(getInitialDueDate("weekly", today)).toBe("2026-10-22");
+  });
+
+  it("defaults to today for monthly preset", () => {
+    const today = new Date(2026, 9, 22);
+    expect(getInitialDueDate("monthly", today)).toBe("2026-10-22");
+  });
+
+  it("defaults to today for custom intervals", () => {
+    const today = new Date(2026, 9, 22);
+    expect(getInitialDueDate("every 3 days", today)).toBe("2026-10-22");
+    expect(getInitialDueDate("every 2 weeks", today)).toBe("2026-10-22");
+  });
+
+  it("keeps today for weekdays preset if today is a weekday", () => {
+    const thursday = new Date(2026, 9, 22); // Thursday
+    expect(getInitialDueDate("weekdays", thursday)).toBe("2026-10-22");
+  });
+
+  it("advances to Monday for weekdays preset if today is Saturday", () => {
+    const saturday = new Date(2026, 9, 24); // Saturday
+    expect(getInitialDueDate("weekdays", saturday)).toBe("2026-10-26");
+  });
+
+  it("advances to Monday for weekdays preset if today is Sunday", () => {
+    const sunday = new Date(2026, 9, 25); // Sunday
+    expect(getInitialDueDate("weekdays", sunday)).toBe("2026-10-26");
+  });
+
+  it("accepts string date as fromDate", () => {
+    expect(getInitialDueDate("weekdays", "2026-10-24")).toBe("2026-10-26");
+  });
+
+  it("falls back to today if repeat rule is invalid or empty", () => {
+    const today = new Date(2026, 9, 22);
+    expect(getInitialDueDate("", today)).toBe("2026-10-22");
+    expect(getInitialDueDate("invalid", today)).toBe("2026-10-22");
   });
 });

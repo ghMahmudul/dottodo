@@ -32,6 +32,7 @@ import {
 } from "@/core/date-utils";
 import {
   formatRepeatLabel,
+  getInitialDueDate,
   parseRepeatRule,
   REPEAT_PRESETS,
 } from "@/core/repeat-utils";
@@ -278,11 +279,14 @@ function RepeatMenu({ repeat, onRepeatChange }: RepeatMenuProps) {
   );
 }
 
-interface DatePickerProps {
+export interface DatePickerProps {
   value: string;
   onChange: (value: string) => void;
   repeat?: string;
   onRepeatChange?: (value: string) => void;
+  onDateAndRepeatChange?: (date: string, repeat: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   className?: string;
   triggerClassName?: string;
   variant?: "outline" | "ghost";
@@ -295,13 +299,25 @@ export function DatePicker({
   onChange,
   repeat = "",
   onRepeatChange,
+  onDateAndRepeatChange,
+  open: propOpen,
+  onOpenChange: propOnOpenChange,
   className,
   triggerClassName,
   variant = "ghost",
   placeholder,
   iconClassName,
 }: DatePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = propOpen !== undefined;
+  const open = isControlled ? propOpen : uncontrolledOpen;
+
+  const setOpen = (nextOpen: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(nextOpen);
+    }
+    propOnOpenChange?.(nextOpen);
+  };
 
   const selectedDate = value ? toDate(value) : undefined;
   const triggerLabel = `${
@@ -311,6 +327,53 @@ export function DatePicker({
     value ? "" : "text-muted-foreground",
     iconClassName,
   );
+
+  const handleQuickOptionSelect = (getValue: () => string) => {
+    const nextValue = getValue();
+    if (onDateAndRepeatChange) {
+      const nextRepeat = !nextValue ? "" : repeat;
+      onDateAndRepeatChange(nextValue, nextRepeat);
+    } else {
+      onChange(nextValue);
+      if (!nextValue && repeat && onRepeatChange) {
+        onRepeatChange("");
+      }
+    }
+    setOpen(false);
+  };
+
+  const handleCalendarSelect = (day?: Date) => {
+    if (day) {
+      const nextValue = formatLocalDate(day);
+      if (onDateAndRepeatChange) {
+        onDateAndRepeatChange(nextValue, repeat);
+      } else {
+        onChange(nextValue);
+      }
+      setOpen(false);
+    }
+  };
+
+  const handleRepeatSelect = (nextRepeat: string) => {
+    if (onDateAndRepeatChange) {
+      if (!nextRepeat || nextRepeat === "none") {
+        onDateAndRepeatChange(value, "");
+      } else {
+        const nextDate = value || getInitialDueDate(nextRepeat);
+        onDateAndRepeatChange(nextDate, nextRepeat);
+      }
+      return;
+    }
+
+    if (!nextRepeat || nextRepeat === "none") {
+      onRepeatChange?.("");
+    } else {
+      onRepeatChange?.(nextRepeat);
+      if (!value) {
+        onChange(getInitialDueDate(nextRepeat));
+      }
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -342,10 +405,7 @@ export function DatePicker({
                   variant="ghost"
                   size="sm"
                   className="h-8 justify-between px-3 text-sm rounded-md"
-                  onClick={() => {
-                    onChange(opt.getValue());
-                    setOpen(false);
-                  }}
+                  onClick={() => handleQuickOptionSelect(opt.getValue)}
                 >
                   <span className="flex items-center gap-2">
                     <opt.icon className="size-4" />
@@ -358,16 +418,11 @@ export function DatePicker({
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(day) => {
-              if (day) {
-                onChange(formatLocalDate(day));
-                setOpen(false);
-              }
-            }}
+            onSelect={handleCalendarSelect}
           />
-          {onRepeatChange && (
+          {(onRepeatChange || onDateAndRepeatChange) && (
             <div className="border-t border-border p-1">
-              <RepeatMenu repeat={repeat} onRepeatChange={onRepeatChange} />
+              <RepeatMenu repeat={repeat} onRepeatChange={handleRepeatSelect} />
             </div>
           )}
         </div>

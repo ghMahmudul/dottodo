@@ -14,6 +14,8 @@ interface PrioritySelectProps {
   onChange: (priority: Priority | undefined) => void;
   variant?: "toolbar" | "inline";
   isDone?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function PrioritySelect({
@@ -21,6 +23,8 @@ export default function PrioritySelect({
   onChange,
   variant = "toolbar",
   isDone = false,
+  open,
+  onOpenChange,
 }: PrioritySelectProps) {
   const selected = PRIORITY_OPTIONS.find((p) => p.value === value);
 
@@ -31,7 +35,7 @@ export default function PrioritySelect({
     : "text-muted-foreground";
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
           <Button

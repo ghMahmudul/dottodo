@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getDueDateColor } from "../../core/constants";
+import { getInitialDueDate } from "../../core/repeat-utils";
 import type { Priority } from "../../core/types";
 import { useTaskDraftStore } from "../../store/task-draft-store";
 import { useAllTags, useProjects, useTaskStore } from "../../store/task-store";
@@ -45,6 +46,8 @@ export interface AddTaskModalProps {
   onPriorityChange?: (priority: Priority | undefined) => void;
   due?: string;
   onDueChange?: (due: string) => void;
+  repeat?: string;
+  onRepeatChange?: (repeat: string) => void;
   selectedTags?: string[];
   onTagsChange?: (tags: string[]) => void;
 }
@@ -65,11 +68,14 @@ export default function AddTaskModal({
   onPriorityChange: propOnPriorityChange,
   due: propDue,
   onDueChange: propOnDueChange,
+  repeat: propRepeat,
+  onRepeatChange: propOnRepeatChange,
   selectedTags: propSelectedTags,
   onTagsChange: propOnTagsChange,
 }: AddTaskModalProps) {
   const storeDraft = useTaskDraftStore((s) => s.draft);
   const setDraftField = useTaskDraftStore((s) => s.setDraftField);
+  const setDraft = useTaskDraftStore((s) => s.setDraft);
   const storeCloseModal = useTaskDraftStore((s) => s.closeModal);
   const storeCreateProject = useTaskStore((s) => s.createProject);
   const handleCreateProject = propOnCreateProject ?? storeCreateProject;
@@ -95,8 +101,44 @@ export default function AddTaskModal({
   const onDueChange =
     propOnDueChange ?? ((v: string) => setDraftField("due", v));
 
-  const repeat = storeDraft.repeat ?? "";
-  const onRepeatChange = (v: string) => setDraftField("repeat", v || undefined);
+  const repeat =
+    propRepeat !== undefined ? propRepeat : (storeDraft.repeat ?? "");
+  const onRepeatChange =
+    propOnRepeatChange ??
+    ((v: string) => setDraftField("repeat", v || undefined));
+
+  const handleDateAndRepeatChange = (newDue: string, newRepeat: string) => {
+    if (propOnDueChange || propOnRepeatChange) {
+      propOnDueChange?.(newDue);
+      propOnRepeatChange?.(newRepeat);
+    } else {
+      setDraft({
+        due: newDue || undefined,
+        repeat: newRepeat || undefined,
+      });
+    }
+  };
+
+  const handleDueChange = (v: string) => {
+    if (!v && repeat) {
+      handleDateAndRepeatChange("", "");
+    } else {
+      onDueChange(v);
+    }
+  };
+
+  const handleRepeatChange = (v: string) => {
+    if (v && !due) {
+      handleDateAndRepeatChange(getInitialDueDate(v), v);
+    } else {
+      onRepeatChange(v);
+    }
+  };
+
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isProjectSelectOpen, setIsProjectSelectOpen] = useState(false);
+  const [isPrioritySelectOpen, setIsPrioritySelectOpen] = useState(false);
+  const [isTagSelectOpen, setIsTagSelectOpen] = useState(false);
 
   const selectedTags =
     propSelectedTags !== undefined ? propSelectedTags : storeDraft.tags;
@@ -135,7 +177,7 @@ export default function AddTaskModal({
     title,
     onTitleChange,
     onPriorityChange,
-    onDueChange,
+    onDueChange: handleDueChange,
     setProjectId,
     onCreateProject: handleCreateProject,
     onCreateTag: handleCreateTag,
@@ -148,6 +190,13 @@ export default function AddTaskModal({
     textareaRef: titleRef,
     containerRef: titleContainerRef,
   });
+
+  const isChildOverlayOpen =
+    isDatePickerOpen ||
+    isProjectSelectOpen ||
+    isPrioritySelectOpen ||
+    isTagSelectOpen ||
+    shortcuts.isOpen;
 
   const handleSubmit = () => {
     const trimmedTitle = title.trim();
@@ -211,7 +260,23 @@ export default function AddTaskModal({
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && handleClose()}>
+    <Dialog
+      open
+      disablePointerDismissal={isChildOverlayOpen}
+      onOpenChange={(open, eventDetails) => {
+        if (!open) {
+          if (
+            isChildOverlayOpen &&
+            (eventDetails.reason === "outside-press" ||
+              eventDetails.reason === "escape-key")
+          ) {
+            eventDetails.cancel();
+            return;
+          }
+          handleClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-5 md:px-6 pt-4 md:pt-5 sr-only">
           <DialogTitle>Add Task</DialogTitle>
@@ -275,13 +340,18 @@ export default function AddTaskModal({
                 onChange={setProjectId}
                 projects={projects}
                 variant="inline"
+                open={isProjectSelectOpen}
+                onOpenChange={setIsProjectSelectOpen}
               />
 
               <DatePicker
                 value={due}
-                onChange={onDueChange}
+                onChange={handleDueChange}
                 repeat={repeat}
-                onRepeatChange={onRepeatChange}
+                onRepeatChange={handleRepeatChange}
+                onDateAndRepeatChange={handleDateAndRepeatChange}
+                open={isDatePickerOpen}
+                onOpenChange={setIsDatePickerOpen}
                 triggerClassName={
                   due ? `h-8 gap-1.5 ${getDueDateColor(due)}` : "h-8"
                 }
@@ -291,6 +361,8 @@ export default function AddTaskModal({
                 value={priority}
                 onChange={onPriorityChange}
                 variant="inline"
+                open={isPrioritySelectOpen}
+                onOpenChange={setIsPrioritySelectOpen}
               />
 
               <TagSelect
@@ -298,6 +370,8 @@ export default function AddTaskModal({
                 onChange={onTagsChange}
                 availableTags={allAvailableTags}
                 variant="inline"
+                open={isTagSelectOpen}
+                onOpenChange={setIsTagSelectOpen}
               />
             </div>
           </div>

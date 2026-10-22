@@ -396,4 +396,122 @@ describe("AddTaskModal", () => {
       expect(projectListbox.querySelector(".lucide-check")).toBeNull();
     });
   });
+
+  describe("repeat and due date synchronization", () => {
+    it("automatically sets due date when repeat is selected while due is empty", async () => {
+      const onDueChange = vi.fn();
+      const onRepeatChange = vi.fn();
+
+      render(
+        <AddTaskModal
+          {...defaultProps}
+          due=""
+          onDueChange={onDueChange}
+          repeat=""
+          onRepeatChange={onRepeatChange}
+        />,
+      );
+
+      // Open DatePicker popover
+      const dateButton = screen.getByRole("button", { name: /^date$/i });
+      fireEvent.click(dateButton);
+
+      // Open repeat dropdown menu
+      const repeatButton = await screen.findByRole("button", {
+        name: /^repeat$/i,
+      });
+      fireEvent.click(repeatButton);
+
+      // Click "Daily"
+      const dailyItem = await screen.findByRole("menuitemradio", {
+        name: /daily/i,
+      });
+      fireEvent.click(dailyItem);
+
+      expect(onRepeatChange).toHaveBeenCalledWith("daily");
+      expect(onDueChange).toHaveBeenCalledWith(
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      );
+    });
+
+    it("clears repeat when due date is cleared via No Date option", async () => {
+      const onDueChange = vi.fn();
+      const onRepeatChange = vi.fn();
+
+      render(
+        <AddTaskModal
+          {...defaultProps}
+          due="2026-10-22"
+          onDueChange={onDueChange}
+          repeat="daily"
+          onRepeatChange={onRepeatChange}
+        />,
+      );
+
+      const dateButton = screen.getByRole("button", {
+        name: /repeats daily/i,
+      });
+      fireEvent.click(dateButton);
+
+      const noDateBtn = await screen.findByRole("button", {
+        name: /no date/i,
+      });
+      fireEvent.click(noDateBtn);
+
+      expect(onDueChange).toHaveBeenCalledWith("");
+      expect(onRepeatChange).toHaveBeenCalledWith("");
+    });
+  });
+
+  describe("hierarchical overlay dismissal", () => {
+    it("closes the date picker on outside click without closing the add task dialog", async () => {
+      const onClose = vi.fn();
+
+      render(<AddTaskModal {...defaultProps} onClose={onClose} />);
+
+      // Open DatePicker popover
+      const dateButton = screen.getByRole("button", { name: /^date$/i });
+      fireEvent.click(dateButton);
+
+      // Verify DatePicker content (calendar) is visible
+      expect(await screen.findByRole("grid")).toBeInTheDocument();
+
+      // Click on dialog overlay/backdrop while DatePicker is open
+      const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+      expect(overlay).toBeInTheDocument();
+      if (overlay) {
+        fireEvent.pointerDown(overlay);
+        fireEvent.click(overlay);
+      }
+
+      // Dialog should NOT have closed
+      expect(onClose).not.toHaveBeenCalled();
+
+      // Clicking overlay again when child overlay is closed should close the dialog
+      if (overlay) {
+        fireEvent.pointerDown(overlay);
+        fireEvent.click(overlay);
+      }
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("closes the date picker on Escape key without closing the add task dialog", async () => {
+      const onClose = vi.fn();
+
+      render(<AddTaskModal {...defaultProps} onClose={onClose} />);
+
+      // Open DatePicker popover
+      const dateButton = screen.getByRole("button", { name: /^date$/i });
+      fireEvent.click(dateButton);
+
+      // Verify DatePicker content (calendar) is visible
+      expect(await screen.findByRole("grid")).toBeInTheDocument();
+
+      // Press Escape while DatePicker is open
+      fireEvent.keyDown(document.body, { key: "Escape" });
+
+      // Dialog should NOT have closed
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
 });

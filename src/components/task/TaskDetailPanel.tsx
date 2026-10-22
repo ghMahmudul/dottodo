@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getDueDateColor, getTaskCheckboxColor } from "../../core/constants";
+import { getInitialDueDate } from "../../core/repeat-utils";
 import type { TodoItem } from "../../core/types";
 import { useDebouncedEffect } from "../../hooks/useDebouncedEffect";
 import { useResizablePanel } from "../../hooks/useResizablePanel";
@@ -106,10 +107,27 @@ export default function TaskDetailPanel({
     [task.id, task.metadata, onUpdate],
   );
 
+  const handleDateAndRepeatChange = useCallback(
+    (date: string, repeat: string) => {
+      onUpdate(task.id, {
+        metadata: {
+          ...task.metadata,
+          due: date || undefined,
+          repeat: repeat || undefined,
+        },
+      });
+    },
+    [task.id, task.metadata, onUpdate],
+  );
+
   const handleDateChange = useCallback(
     (value: string) => {
       onUpdate(task.id, {
-        metadata: { ...task.metadata, due: value || undefined },
+        metadata: {
+          ...task.metadata,
+          due: value || undefined,
+          ...(!value ? { repeat: undefined } : {}),
+        },
       });
     },
     [task.id, task.metadata, onUpdate],
@@ -117,8 +135,16 @@ export default function TaskDetailPanel({
 
   const handleRepeatChange = useCallback(
     (value: string) => {
+      const nextDue =
+        value && !task.metadata.due
+          ? getInitialDueDate(value)
+          : task.metadata.due;
       onUpdate(task.id, {
-        metadata: { ...task.metadata, repeat: value || undefined },
+        metadata: {
+          ...task.metadata,
+          repeat: value || undefined,
+          due: nextDue || undefined,
+        },
       });
     },
     [task.id, task.metadata, onUpdate],
@@ -273,6 +299,7 @@ export default function TaskDetailPanel({
               onChange={handleDateChange}
               repeat={task.metadata.repeat ?? ""}
               onRepeatChange={handleRepeatChange}
+              onDateAndRepeatChange={handleDateAndRepeatChange}
               variant="ghost"
               placeholder="Date"
               triggerClassName={`h-8 gap-1.5 ${

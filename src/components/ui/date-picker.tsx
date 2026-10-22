@@ -2,14 +2,24 @@ import {
   Ban,
   CalendarDays,
   Calendar as CalendarIcon,
-  Check,
+  ChevronDown,
   Repeat,
   Sun,
   Sunrise,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -66,11 +76,207 @@ export const DATE_QUICK_OPTIONS: {
 
 const QUICK_OPTIONS = DATE_QUICK_OPTIONS;
 
-const CUSTOM_UNITS: { label: string; value: "days" | "weeks" | "months" }[] = [
-  { label: "days", value: "days" },
-  { label: "weeks", value: "weeks" },
-  { label: "months", value: "months" },
-];
+const CUSTOM_UNITS = [
+  { label: "Days", value: "days" },
+  { label: "Weeks", value: "weeks" },
+  { label: "Months", value: "months" },
+] as const;
+
+type CustomUnit = (typeof CUSTOM_UNITS)[number]["value"];
+
+interface RepeatMenuProps {
+  repeat: string;
+  onRepeatChange: (value: string) => void;
+}
+
+function RepeatMenu({ repeat, onRepeatChange }: RepeatMenuProps) {
+  const isCustomRepeat =
+    repeat !== "" && !REPEAT_PRESETS.some((preset) => preset.value === repeat);
+  const parsedCustom = isCustomRepeat ? parseRepeatRule(repeat) : null;
+  const parsedInterval = parsedCustom?.interval;
+  const parsedUnit = parsedCustom?.unit;
+
+  const [customInterval, setCustomInterval] = useState(parsedInterval ?? 2);
+  const [customIntervalInput, setCustomIntervalInput] = useState(
+    String(parsedInterval ?? 2),
+  );
+  const [customUnit, setCustomUnit] = useState<CustomUnit>(
+    parsedUnit ?? "days",
+  );
+  const intervalInputRef = useRef<HTMLInputElement>(null);
+  const intervalInputId = useId();
+
+  useEffect(() => {
+    if (parsedInterval === undefined) return;
+    setCustomInterval(parsedInterval);
+    setCustomIntervalInput(String(parsedInterval));
+  }, [parsedInterval]);
+
+  useEffect(() => {
+    if (parsedUnit) setCustomUnit(parsedUnit);
+  }, [parsedUnit]);
+
+  const selectedValue = !repeat ? "none" : isCustomRepeat ? "custom" : repeat;
+
+  const applyCustom = (interval: number, unit: CustomUnit) => {
+    onRepeatChange(`every ${interval} ${unit}`);
+  };
+
+  const handleValueChange = (value: string) => {
+    if (value === "none") {
+      onRepeatChange("");
+      return;
+    }
+    if (value === "custom") {
+      applyCustom(customInterval, customUnit);
+      requestAnimationFrame(() => intervalInputRef.current?.focus());
+      return;
+    }
+    onRepeatChange(value);
+  };
+
+  const handleIntervalInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const value = event.target.value;
+    setCustomIntervalInput(value);
+    if (value === "") return;
+
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return;
+
+    const clamped = Math.min(99, Math.max(1, parsed));
+    setCustomInterval(clamped);
+    applyCustom(clamped, customUnit);
+  };
+
+  const commitCustomInterval = () => {
+    const parsed = Number.parseInt(customIntervalInput, 10);
+    const next = Number.isFinite(parsed)
+      ? Math.min(99, Math.max(1, parsed))
+      : customInterval;
+
+    setCustomInterval(next);
+    setCustomIntervalInput(String(next));
+    applyCustom(next, customUnit);
+  };
+
+  const handleCustomUnitChange = (unit: CustomUnit) => {
+    setCustomUnit(unit);
+    applyCustom(customInterval, unit);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-between rounded-md px-3 text-sm"
+            aria-label={
+              repeat ? `Repeat: ${formatRepeatLabel(repeat)}` : "Repeat"
+            }
+          />
+        }
+      >
+        <span className="flex items-center gap-2">
+          <Repeat className="size-4" />
+          Repeat
+        </span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          {repeat ? formatRepeatLabel(repeat) : "None"}
+          <ChevronDown className="size-4" />
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="center"
+        sideOffset={4}
+        className="w-[calc(var(--anchor-width)+0.5rem)] p-1"
+      >
+        <DropdownMenuRadioGroup
+          value={selectedValue}
+          onValueChange={handleValueChange}
+          aria-label="Repeat frequency"
+        >
+          {REPEAT_PRESETS.map((preset) => (
+            <DropdownMenuRadioItem
+              key={preset.value}
+              value={preset.value}
+              className="h-8 rounded-md px-3 py-0 pr-8 text-sm"
+              closeOnClick
+            >
+              <span>{preset.label}</span>
+            </DropdownMenuRadioItem>
+          ))}
+          <DropdownMenuRadioItem
+            value="custom"
+            className="h-8 rounded-md px-3 py-0 pr-8 text-sm"
+            closeOnClick={false}
+          >
+            <span>Custom</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem
+            value="none"
+            className="h-8 rounded-md px-3 py-0 pr-8 text-sm"
+            closeOnClick
+          >
+            <span>None</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+
+        {isCustomRepeat && (
+          <>
+            <DropdownMenuSeparator className="-mx-1" />
+            <fieldset
+              aria-label="Custom repeat interval"
+              className="m-0 min-w-0 space-y-2 border-0 px-3 py-2"
+              onKeyDown={(event) => {
+                if (event.key === "Escape" || event.key === "Tab") return;
+                event.stopPropagation();
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor={intervalInputId}>Every</Label>
+                <Input
+                  id={intervalInputId}
+                  ref={intervalInputRef}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={99}
+                  value={customIntervalInput}
+                  onChange={handleIntervalInputChange}
+                  onBlur={commitCustomInterval}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="h-8 w-20"
+                />
+              </div>
+              <fieldset
+                className="m-0 flex min-w-0 gap-2 border-0 p-0"
+                aria-label="Repeat interval unit"
+              >
+                {CUSTOM_UNITS.map((unit) => (
+                  <Button
+                    key={unit.value}
+                    type="button"
+                    size="sm"
+                    variant={customUnit === unit.value ? "default" : "outline"}
+                    aria-pressed={customUnit === unit.value}
+                    className="flex-1 px-2"
+                    onClick={() => handleCustomUnitChange(unit.value)}
+                  >
+                    {unit.label}
+                  </Button>
+                ))}
+              </fieldset>
+            </fieldset>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 interface DatePickerProps {
   value: string;
@@ -87,7 +293,7 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
-  repeat,
+  repeat = "",
   onRepeatChange,
   className,
   triggerClassName,
@@ -98,63 +304,13 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
 
   const selectedDate = value ? toDate(value) : undefined;
-
-  const isCustomRepeat =
-    repeat !== undefined &&
-    repeat !== "" &&
-    !REPEAT_PRESETS.some((p) => p.value === repeat);
-  const parsedCustom = isCustomRepeat ? parseRepeatRule(repeat) : null;
-
-  const [showCustom, setShowCustom] = useState(isCustomRepeat);
-  const [customInterval, setCustomInterval] = useState(
-    parsedCustom?.interval ?? 2,
+  const triggerLabel = `${
+    value ? `Date: ${formatDate(value)}` : (placeholder ?? "Date")
+  }${repeat ? `, repeats ${formatRepeatLabel(repeat)}` : ""}`;
+  const sharedIconClassName = cn(
+    value ? "" : "text-muted-foreground",
+    iconClassName,
   );
-  const [customUnit, setCustomUnit] = useState<"days" | "weeks" | "months">(
-    parsedCustom?.unit ?? "days",
-  );
-
-  useEffect(() => {
-    if (isCustomRepeat && parsedCustom) {
-      setShowCustom(true);
-      setCustomInterval(parsedCustom.interval);
-      if (parsedCustom.unit) setCustomUnit(parsedCustom.unit);
-    }
-  }, [repeat, isCustomRepeat, parsedCustom]);
-
-  const handlePresetClick = (presetValue: string) => {
-    if (!onRepeatChange) return;
-    if (repeat === presetValue) {
-      onRepeatChange("");
-    } else {
-      onRepeatChange(presetValue);
-      setShowCustom(false);
-    }
-  };
-
-  const handleCustomToggle = () => {
-    if (!onRepeatChange) return;
-    if (showCustom && isCustomRepeat) {
-      onRepeatChange("");
-      setShowCustom(false);
-    } else {
-      setShowCustom(true);
-      const newValue = `every ${customInterval} ${customUnit}`;
-      onRepeatChange(newValue);
-    }
-  };
-
-  const handleCustomIntervalChange = (newInterval: number) => {
-    if (!onRepeatChange) return;
-    const clamped = Math.max(1, Math.min(99, newInterval));
-    setCustomInterval(clamped);
-    onRepeatChange(`every ${clamped} ${customUnit}`);
-  };
-
-  const handleCustomUnitChange = (newUnit: "days" | "weeks" | "months") => {
-    if (!onRepeatChange) return;
-    setCustomUnit(newUnit);
-    onRepeatChange(`every ${customInterval} ${newUnit}`);
-  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -164,22 +320,17 @@ export function DatePicker({
             variant={variant}
             size="sm"
             className={triggerClassName ?? `h-8 ${value ? "gap-1.5" : ""}`}
+            aria-label={triggerLabel}
           />
         }
       >
-        <CalendarIcon
-          className={cn(
-            "size-4",
-            value ? "" : "text-muted-foreground",
-            iconClassName,
-          )}
-        />
+        <CalendarIcon className={cn("size-4", sharedIconClassName)} />
         {value ? (
           <span>{formatDate(value)}</span>
         ) : (
           placeholder && <span>{placeholder}</span>
         )}
-        {repeat && <Repeat className="size-3 text-muted-foreground" />}
+        {repeat && <Repeat className={cn(sharedIconClassName, "size-3")} />}
       </PopoverTrigger>
       <PopoverContent className={`w-auto p-0 ${className ?? ""}`}>
         <div className="flex flex-col">
@@ -215,80 +366,8 @@ export function DatePicker({
             }}
           />
           {onRepeatChange && (
-            <div className="border-t border-border p-2">
-              <div className="flex items-center gap-1.5 px-1 pb-1.5">
-                <Repeat className="size-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  Repeat
-                  {repeat ? `: ${formatRepeatLabel(repeat)}` : ""}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {REPEAT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={cn(
-                      "px-2.5 py-1 text-xs rounded-md border transition-colors",
-                      repeat === preset.value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-transparent text-foreground border-border hover:bg-accent",
-                    )}
-                    onClick={() => handlePresetClick(preset.value)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={cn(
-                    "px-2.5 py-1 text-xs rounded-md border transition-colors",
-                    isCustomRepeat
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-transparent text-foreground border-border hover:bg-accent",
-                  )}
-                  onClick={handleCustomToggle}
-                >
-                  Custom
-                </button>
-              </div>
-              {showCustom && (
-                <div className="flex items-center gap-1.5 mt-2 px-0.5">
-                  <span className="text-xs text-muted-foreground">Every</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={customInterval}
-                    onChange={(e) =>
-                      handleCustomIntervalChange(
-                        Number.parseInt(e.target.value, 10) || 1,
-                      )
-                    }
-                    className="w-12 h-7 text-xs text-center rounded-md border border-border bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  <div className="flex rounded-md border border-border overflow-hidden">
-                    {CUSTOM_UNITS.map((u) => (
-                      <button
-                        key={u.value}
-                        type="button"
-                        className={cn(
-                          "px-2 py-1 text-xs transition-colors",
-                          customUnit === u.value
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-transparent text-foreground hover:bg-accent",
-                        )}
-                        onClick={() => handleCustomUnitChange(u.value)}
-                      >
-                        {u.label}
-                      </button>
-                    ))}
-                  </div>
-                  {isCustomRepeat && (
-                    <Check className="size-3.5 text-primary" />
-                  )}
-                </div>
-              )}
+            <div className="border-t border-border p-1">
+              <RepeatMenu repeat={repeat} onRepeatChange={onRepeatChange} />
             </div>
           )}
         </div>

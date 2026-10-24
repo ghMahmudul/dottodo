@@ -19,6 +19,41 @@ import type { TodoItem } from "../../core/types";
 import { useSprinkleStore } from "../../store/sprinkle-store";
 import { useWorkspaceStore } from "../../store/workspace-store";
 
+export const MAX_PREVIEW_WORDS = 15;
+
+export function getTaskDescriptionPreview(
+  body: string | undefined,
+  maxWords = MAX_PREVIEW_WORDS,
+): string | undefined {
+  if (!body) return undefined;
+  const trimmed = body.trim();
+  if (!trimmed) return undefined;
+
+  const words: string[] = [];
+  const regex = /\S+/g;
+  let match: RegExpExecArray | null = regex.exec(trimmed);
+
+  while (match !== null) {
+    words.push(match[0]);
+    if (words.length > maxWords) {
+      break;
+    }
+    match = regex.exec(trimmed);
+  }
+
+  if (words.length === 0) return undefined;
+
+  if (words.length <= maxWords) {
+    return words.join(" ");
+  }
+
+  const truncated = words
+    .slice(0, maxWords)
+    .join(" ")
+    .replace(/[.,;:!?]+$/, "");
+  return `${truncated}...`;
+}
+
 interface TaskItemProps {
   task: TodoItem;
   isSelected: boolean;
@@ -53,10 +88,7 @@ function TaskItemComponent({
   const iconColor = isDone
     ? getTaskCheckboxColor(task.metadata.priority, "done")
     : getTaskCheckboxColor(task.metadata.priority, task.state);
-  const preview = task.body
-    .split("\n")
-    .find((l) => l.trim())
-    ?.slice(0, 50);
+  const preview = getTaskDescriptionPreview(task.body);
 
   const handleCheckboxClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

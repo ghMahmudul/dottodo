@@ -2,7 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { TodoItem } from "../../core/types";
-import TaskItem from "../task/TaskItem";
+import TaskItem, {
+  getTaskDescriptionPreview,
+  MAX_PREVIEW_WORDS,
+} from "../task/TaskItem";
 
 const mockTask: TodoItem = {
   id: "task-1",
@@ -291,5 +294,122 @@ describe("TaskItem", () => {
     const taskRow = screen.getByTestId("task-item");
     fireEvent.keyDown(taskRow, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledWith(mockTask.id);
+  });
+
+  it("renders description preview when body is present", () => {
+    render(
+      <TaskItem
+        task={mockTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("This is a body preview")).toBeInTheDocument();
+  });
+
+  it("truncates description by word limit with ellipsis and without cutting words in half", () => {
+    const longDescTask: TodoItem = {
+      ...mockTask,
+      body: "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen",
+    };
+
+    render(
+      <TaskItem
+        task={longDescTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen...",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render description preview paragraph when body is empty or whitespace", () => {
+    const emptyBodyTask: TodoItem = {
+      ...mockTask,
+      body: "   \n\t  ",
+    };
+
+    render(
+      <TaskItem
+        task={emptyBodyTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByText("This is a body preview"),
+    ).not.toBeInTheDocument();
+    const taskRow = screen.getByTestId("task-item");
+    expect(taskRow.querySelector("p")).toBeNull();
+  });
+});
+
+describe("getTaskDescriptionPreview", () => {
+  it("returns undefined for undefined, empty, or whitespace-only body", () => {
+    expect(getTaskDescriptionPreview(undefined)).toBeUndefined();
+    expect(getTaskDescriptionPreview("")).toBeUndefined();
+    expect(getTaskDescriptionPreview("   \n\t  ")).toBeUndefined();
+  });
+
+  it("returns exact text when word count is within limit", () => {
+    expect(getTaskDescriptionPreview("SingleWord")).toBe("SingleWord");
+    expect(getTaskDescriptionPreview("One two three four five")).toBe(
+      "One two three four five",
+    );
+  });
+
+  it("truncates by word limit and appends ellipsis without cutting off words", () => {
+    const text =
+      "Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu";
+    expect(getTaskDescriptionPreview(text, 5)).toBe(
+      "Alpha beta gamma delta epsilon...",
+    );
+    expect(getTaskDescriptionPreview(text, 10)).toBe(
+      "Alpha beta gamma delta epsilon zeta eta theta iota kappa...",
+    );
+  });
+
+  it("normalizes newlines and multiple whitespace characters", () => {
+    const multiline = "Line one\n  line two\n\nline   three";
+    expect(getTaskDescriptionPreview(multiline, 10)).toBe(
+      "Line one line two line three",
+    );
+  });
+
+  it("strips trailing punctuation before adding ellipsis", () => {
+    const punctuated = "First, second, third, fourth, fifth. Sixth";
+    expect(getTaskDescriptionPreview(punctuated, 5)).toBe(
+      "First, second, third, fourth, fifth...",
+    );
+  });
+
+  it("uses MAX_PREVIEW_WORDS by default", () => {
+    expect(MAX_PREVIEW_WORDS).toBe(15);
+    const fifteenWords =
+      "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen";
+    expect(getTaskDescriptionPreview(fifteenWords)).toBe(fifteenWords);
+    expect(getTaskDescriptionPreview(`${fifteenWords} sixteen`)).toBe(
+      `${fifteenWords}...`,
+    );
+  });
+
+  it("handles very large body efficiently without processing all words", () => {
+    const hugeBody = "word ".repeat(50000);
+    const start = performance.now();
+    const result = getTaskDescriptionPreview(hugeBody);
+    const duration = performance.now() - start;
+
+    expect(result).toBe(`${"word ".repeat(15).trim()}...`);
+    expect(duration).toBeLessThan(20);
   });
 });

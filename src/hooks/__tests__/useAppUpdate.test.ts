@@ -4,13 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { APP_VERSION } from "@/core/constants";
 import { UPDATE_STORAGE_KEY, useAppUpdate } from "../useAppUpdate";
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("sonner", () => {
+  const toastFn = Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
-  },
-}));
+  });
+  return { toast: toastFn };
+});
 
 describe("useAppUpdate", () => {
   beforeEach(() => {
@@ -22,7 +23,7 @@ describe("useAppUpdate", () => {
     renderHook(() => useAppUpdate());
 
     expect(localStorage.getItem(UPDATE_STORAGE_KEY)).toBe(APP_VERSION);
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it("does not show toast when the stored version matches current version", () => {
@@ -30,16 +31,17 @@ describe("useAppUpdate", () => {
 
     renderHook(() => useAppUpdate());
 
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
     expect(localStorage.getItem(UPDATE_STORAGE_KEY)).toBe(APP_VERSION);
   });
 
-  it("shows 'App updated' toast on next launch when version differs", () => {
+  it("shows neutral 'DotTodo updated' toast on next launch when version differs", () => {
     localStorage.setItem(UPDATE_STORAGE_KEY, "0.0.1");
 
     renderHook(() => useAppUpdate());
 
-    expect(toast.success).toHaveBeenCalledWith("App updated");
+    expect(toast).toHaveBeenCalledWith("DotTodo updated");
+    expect(toast.success).not.toHaveBeenCalled();
     expect(localStorage.getItem(UPDATE_STORAGE_KEY)).toBe(APP_VERSION);
   });
 

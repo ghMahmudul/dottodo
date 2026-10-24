@@ -15,7 +15,7 @@ export function useAppUpdate() {
       const storedVersion = localStorage.getItem(UPDATE_STORAGE_KEY);
 
       if (storedVersion && storedVersion !== APP_VERSION) {
-        toast.success("App updated");
+        toast("DotTodo updated");
       }
 
       localStorage.setItem(UPDATE_STORAGE_KEY, APP_VERSION);

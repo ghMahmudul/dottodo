@@ -352,13 +352,132 @@ describe("TaskItem", () => {
     const taskRow = screen.getByTestId("task-item");
     expect(taskRow.querySelector("p")).toBeNull();
   });
+
+  it("aligns project badge with title row when task has only title", () => {
+    const titleOnlyTask: TodoItem = {
+      ...mockTask,
+      projectId: "project-alpha",
+      body: "",
+      metadata: { id: "task-1", created: "2026-03-15" },
+    };
+
+    render(
+      <TaskItem
+        task={titleOnlyTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const titleEl = screen.getByText("Test task item");
+    const projectBadge = screen.getByText("project-alpha");
+    expect(titleEl.closest("div")).toContainElement(projectBadge);
+  });
+
+  it("aligns project badge with description row when task has description and no meta", () => {
+    const descTask: TodoItem = {
+      ...mockTask,
+      projectId: "project-alpha",
+      body: "Some description text",
+      metadata: { id: "task-1", created: "2026-03-15" },
+    };
+
+    render(
+      <TaskItem
+        task={descTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const titleEl = screen.getByText("Test task item");
+    const descEl = screen.getByText("Some description text");
+    const projectBadge = screen.getByText("project-alpha");
+
+    expect(titleEl.closest("div")).not.toContainElement(projectBadge);
+    expect(descEl.closest("div")).toContainElement(projectBadge);
+  });
+
+  it("aligns project badge with meta row when metadata is present", () => {
+    const metaTask: TodoItem = {
+      ...mockTask,
+      projectId: "project-alpha",
+      body: "Some description text",
+      metadata: { id: "task-1", created: "2026-03-15", tags: ["dev"] },
+    };
+
+    render(
+      <TaskItem
+        task={metaTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const titleEl = screen.getByText("Test task item");
+    const descEl = screen.getByText("Some description text");
+    const projectBadge = screen.getByText("project-alpha");
+
+    expect(titleEl.closest("div")).not.toContainElement(projectBadge);
+    expect(descEl.closest("div")).not.toContainElement(projectBadge);
+    expect(screen.getByTestId("task-item")).toContainElement(projectBadge);
+  });
+
+  it("aligns project badge with meta row when title and meta exist without description", () => {
+    const titleAndMetaTask: TodoItem = {
+      ...mockTask,
+      projectId: "project-alpha",
+      body: "",
+      metadata: { id: "task-1", created: "2026-03-15", due: "2026-03-20" },
+    };
+
+    render(
+      <TaskItem
+        task={titleAndMetaTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    const titleEl = screen.getByText("Test task item");
+    const projectBadge = screen.getByText("project-alpha");
+    expect(titleEl.closest("div")).not.toContainElement(projectBadge);
+    expect(screen.getByTestId("task-item")).toContainElement(projectBadge);
+  });
+
+  it("renders tooltip title attributes for title, description, and project badge", () => {
+    render(
+      <TaskItem
+        task={mockTask}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleState={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Test task item")).toHaveAttribute(
+      "title",
+      "Test task item",
+    );
+    expect(screen.getByText("This is a body preview")).toHaveAttribute(
+      "title",
+      "This is a body preview",
+    );
+    expect(screen.getByText("Inbox")).toHaveAttribute("title", "Inbox");
+  });
 });
 
 describe("getTaskDescriptionPreview", () => {
-  it("returns undefined for undefined, empty, or whitespace-only body", () => {
+  it("returns undefined for undefined, empty, whitespace-only body, or non-positive maxWords", () => {
     expect(getTaskDescriptionPreview(undefined)).toBeUndefined();
     expect(getTaskDescriptionPreview("")).toBeUndefined();
     expect(getTaskDescriptionPreview("   \n\t  ")).toBeUndefined();
+    expect(getTaskDescriptionPreview("Valid text", 0)).toBeUndefined();
+    expect(getTaskDescriptionPreview("Valid text", -1)).toBeUndefined();
   });
 
   it("returns exact text when word count is within limit", () => {

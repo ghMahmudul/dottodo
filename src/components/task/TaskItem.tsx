@@ -25,7 +25,7 @@ export function getTaskDescriptionPreview(
   body: string | undefined,
   maxWords = MAX_PREVIEW_WORDS,
 ): string | undefined {
-  if (!body) return undefined;
+  if (!body || maxWords <= 0) return undefined;
   const trimmed = body.trim();
   if (!trimmed) return undefined;
 
@@ -89,6 +89,27 @@ function TaskItemComponent({
     ? getTaskCheckboxColor(task.metadata.priority, "done")
     : getTaskCheckboxColor(task.metadata.priority, task.state);
   const preview = getTaskDescriptionPreview(task.body);
+
+  const hasMeta = !!(
+    task.metadata.due ||
+    task.metadata.repeat ||
+    (task.metadata.tags && task.metadata.tags.length > 0)
+  );
+  const isDescriptionLast = !hasMeta && !!preview;
+  const isTitleLast = !hasMeta && !preview;
+
+  const isInbox = task.projectId.toLowerCase() === "inbox";
+  const projectName = isInbox ? "Inbox" : task.projectId;
+  const ProjectIcon = getProjectIcon(task.projectId, settings?.projectIcons);
+
+  const projectBadge = (
+    <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground min-h-6 self-end">
+      <span className="text-xs truncate max-w-25" title={projectName}>
+        {projectName}
+      </span>
+      <ProjectIcon className="size-3.5" />
+    </div>
+  );
 
   const handleCheckboxClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -169,9 +190,10 @@ function TaskItemComponent({
           </Button>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center min-h-6 gap-2">
+            <div className="flex items-center justify-between min-h-6 gap-2">
               <span
-                className={`text-sm truncate transition-colors duration-200 ease-out ${
+                title={task.title || undefined}
+                className={`text-sm truncate transition-colors duration-200 ease-out flex-1 min-w-0 ${
                   isDone ? "text-muted-foreground" : "text-foreground"
                 }`}
               >
@@ -179,68 +201,67 @@ function TaskItemComponent({
                   <span className="text-muted-foreground">No Title</span>
                 )}
               </span>
+              {isTitleLast && projectBadge}
             </div>
 
             {preview && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {preview}
-              </p>
-            )}
-
-            {(task.metadata.due ||
-              task.metadata.repeat ||
-              (task.metadata.tags && task.metadata.tags.length > 0)) && (
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                {task.metadata.due && (
-                  <span
-                    className={`flex items-center gap-1 text-xs tabular-nums ${
-                      isDone
-                        ? "text-muted-foreground"
-                        : getDueDateColor(task.metadata.due)
-                    }`}
-                  >
-                    <Calendar className="size-3" />
-                    {formatDate(task.metadata.due)}
-                    {task.metadata.repeat && <Repeat className="size-3" />}
-                  </span>
+              <div
+                className={cn(
+                  "mt-0.5",
+                  isDescriptionLast &&
+                    "flex items-center justify-between gap-2 min-h-6",
                 )}
-                {!task.metadata.due && task.metadata.repeat && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Repeat className="size-3" />
-                    Repeats
-                  </span>
-                )}
-                {task.metadata.tags &&
-                  task.metadata.tags.length > 0 &&
-                  task.metadata.tags.map((tag) => {
-                    const TagIcon = getTagIcon(tag, settings?.tagIcons);
-                    return (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                      >
-                        <TagIcon className="size-2.5" />
-                        {tag}
-                      </span>
-                    );
-                  })}
+              >
+                <p
+                  title={task.body?.trim() || undefined}
+                  className="text-xs text-muted-foreground truncate flex-1 min-w-0"
+                >
+                  {preview}
+                </p>
+                {isDescriptionLast && projectBadge}
               </div>
             )}
-          </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground min-h-6 self-end">
-            <span className="text-xs truncate max-w-25">
-              {task.projectId.toLowerCase() === "inbox"
-                ? "Inbox"
-                : task.projectId}
-            </span>
-            {(() => {
-              const ProjectIcon = getProjectIcon(
-                task.projectId,
-                settings?.projectIcons,
-              );
-              return <ProjectIcon className="size-3.5" />;
-            })()}
+            {hasMeta && (
+              <div className="flex items-center justify-between gap-3 mt-1.5 min-h-6">
+                <div className="flex items-center gap-3 flex-wrap min-w-0 flex-1">
+                  {task.metadata.due && (
+                    <span
+                      className={`flex items-center gap-1 text-xs tabular-nums ${
+                        isDone
+                          ? "text-muted-foreground"
+                          : getDueDateColor(task.metadata.due)
+                      }`}
+                    >
+                      <Calendar className="size-3" />
+                      {formatDate(task.metadata.due)}
+                      {task.metadata.repeat && <Repeat className="size-3" />}
+                    </span>
+                  )}
+                  {!task.metadata.due && task.metadata.repeat && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Repeat className="size-3" />
+                      Repeats
+                    </span>
+                  )}
+                  {task.metadata.tags &&
+                    task.metadata.tags.length > 0 &&
+                    task.metadata.tags.map((tag) => {
+                      const TagIcon = getTagIcon(tag, settings?.tagIcons);
+                      return (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                        >
+                          <TagIcon className="size-2.5" />
+                          {tag}
+                        </span>
+                      );
+                    })}
+                </div>
+                {projectBadge}
+              </div>
+            )}
           </div>
         </div>
       </div>

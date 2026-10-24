@@ -178,6 +178,7 @@ export default function AddTaskModal({
     onTitleChange,
     onPriorityChange,
     onDueChange: handleDueChange,
+    onRepeatChange: handleRepeatChange,
     setProjectId,
     onCreateProject: handleCreateProject,
     onCreateTag: handleCreateTag,

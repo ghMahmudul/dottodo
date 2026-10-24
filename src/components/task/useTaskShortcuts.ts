@@ -1,16 +1,25 @@
 import {
+  Ban,
+  CalendarDays,
   Calendar as CalendarIcon,
   Flag,
   Folder,
   Inbox,
   Plus,
+  Repeat,
+  Sun,
+  Sunrise,
   Tag,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { DATE_QUICK_OPTIONS } from "@/components/ui/date-picker";
 import { PRIORITY_OPTIONS } from "@/core/constants";
+import {
+  getFutureLocalDateString,
+  getTodayLocalDateString,
+} from "@/core/date-utils";
 import { getProjectIcon, getTagIcon } from "@/core/icons";
+import { REPEAT_PRESETS } from "@/core/repeat-utils";
 import type { Priority } from "@/core/types";
 import { type CaretCoordinates, getCaretCoordinates } from "@/lib/caret";
 import {
@@ -26,6 +35,7 @@ export interface UseTaskShortcutsOptions {
   onTitleChange: (title: string) => void;
   onPriorityChange: (priority: Priority | undefined) => void;
   onDueChange: (due: string) => void;
+  onRepeatChange?: (repeat: string) => void;
   setProjectId: (projectId: string) => void;
   onCreateProject?: (name: string) => void | Promise<void>;
   onCreateTag?: (name: string) => void | Promise<void>;
@@ -44,6 +54,7 @@ export function useTaskShortcuts({
   onTitleChange,
   onPriorityChange,
   onDueChange,
+  onRepeatChange,
   setProjectId,
   onCreateProject,
   onCreateTag,
@@ -70,7 +81,20 @@ export function useTaskShortcuts({
     (text: string, cursorPos: number) => {
       const detected = detectShortcutToken(text, cursorPos);
       if (detected) {
-        setActiveShortcut(detected);
+        setActiveShortcut((prev) => {
+          if (
+            prev?.trigger === "*" &&
+            prev?.subMode === "repeat" &&
+            detected.trigger === "*" &&
+            detected.startIndex === prev.startIndex
+          ) {
+            return {
+              ...detected,
+              subMode: "repeat",
+            };
+          }
+          return detected;
+        });
         setActiveIndex(0);
         if (textareaRef.current) {
           const coords = getCaretCoordinates(textareaRef.current, cursorPos);
@@ -138,6 +162,36 @@ export function useTaskShortcuts({
     },
     [activeShortcut, title, onTitleChange, textareaRef],
   );
+
+  const switchToRepeat = useCallback(() => {
+    if (!activeShortcut) return;
+    const { startIndex, endIndex, text: shortcutText } = activeShortcut;
+    const currentText = shortcutText || textareaRef.current?.value || title;
+    const newText = `${currentText.slice(0, startIndex)}*${currentText.slice(endIndex)}`;
+    const newCursor = startIndex + 1;
+
+    onTitleChange(newText);
+
+    const nextShortcut: ActiveShortcut = {
+      trigger: "*",
+      subMode: "repeat",
+      query: "",
+      startIndex,
+      endIndex: newCursor,
+      text: newText,
+    };
+    setActiveShortcut(nextShortcut);
+    setActiveIndex(0);
+
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursor, newCursor);
+        const coords = getCaretCoordinates(textareaRef.current, newCursor);
+        setCaretCoords(coords);
+      }
+    });
+  }, [activeShortcut, title, onTitleChange, textareaRef]);
 
   const items = useMemo<ShortcutItem[]>(() => {
     if (!activeShortcut) return [];
@@ -218,21 +272,90 @@ export function useTaskShortcuts({
     }
 
     if (trigger === "*") {
-      const dateOptions: ShortcutItem[] = DATE_QUICK_OPTIONS.map((opt) => {
-        const val = opt.getValue();
-        return {
-          id: opt.label.toLowerCase().replace(/\s+/g, "-"),
-          label: opt.label,
-          icon: opt.icon,
+      const repeatOptions: ShortcutItem[] = [
+        ...REPEAT_PRESETS.map((preset) => ({
+          id: preset.value,
+          label: preset.label,
+          icon: Repeat,
           action: () => {
-            onDueChange(val);
+            onRepeatChange?.(preset.value);
             removeCurrentToken();
           },
-        };
-      });
+        })),
+        {
+          id: "none",
+          label: "None",
+          color: "text-muted-foreground",
+          icon: Ban,
+          action: () => {
+            onRepeatChange?.("");
+            removeCurrentToken();
+          },
+        },
+      ];
 
-      if (!q) return dateOptions;
-      return dateOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+      if (activeShortcut.subMode === "repeat") {
+        if (!q) return repeatOptions;
+        return repeatOptions.filter((opt) =>
+          opt.label.toLowerCase().includes(q),
+        );
+      }
+
+      const baseDateOptions: ShortcutItem[] = [
+        {
+          id: "today",
+          label: "Today",
+          icon: Sun,
+          action: () => {
+            onDueChange(getTodayLocalDateString());
+            removeCurrentToken();
+          },
+        },
+        {
+          id: "tomorrow",
+          label: "Tomorrow",
+          icon: Sunrise,
+          action: () => {
+            onDueChange(getFutureLocalDateString(1));
+            removeCurrentToken();
+          },
+        },
+        {
+          id: "next-week",
+          label: "Next Week",
+          icon: CalendarDays,
+          action: () => {
+            onDueChange(getFutureLocalDateString(7));
+            removeCurrentToken();
+          },
+        },
+        {
+          id: "repeat",
+          label: "Repeat",
+          icon: Repeat,
+          action: () => {
+            switchToRepeat();
+          },
+        },
+        {
+          id: "no-date",
+          label: "No Date",
+          icon: Ban,
+          action: () => {
+            onDueChange("");
+            removeCurrentToken();
+          },
+        },
+      ];
+
+      if (!q) return baseDateOptions;
+
+      const filtered = baseDateOptions.filter((opt) =>
+        opt.label.toLowerCase().includes(q),
+      );
+      if (filtered.length > 0) return filtered;
+
+      return repeatOptions.filter((opt) => opt.label.toLowerCase().includes(q));
     }
 
     if (trigger === "+") {
@@ -335,9 +458,11 @@ export function useTaskShortcuts({
     projectIcons,
     tagIcons,
     replaceWithTrigger,
+    switchToRepeat,
     removeCurrentToken,
     onPriorityChange,
     onDueChange,
+    onRepeatChange,
     setProjectId,
     onCreateProject,
     onCreateTag,
@@ -345,7 +470,7 @@ export function useTaskShortcuts({
   ]);
 
   useEffect(() => {
-    setActiveIndex(0);
+    setActiveIndex((prev) => (prev >= items.length ? 0 : prev));
   }, [items.length]);
 
   const handleKeyDown = useCallback(
@@ -356,6 +481,20 @@ export function useTaskShortcuts({
         e.preventDefault();
         e.stopPropagation();
         setActiveShortcut(null);
+        return true;
+      }
+
+      if (
+        e.key === "Backspace" &&
+        activeShortcut.subMode === "repeat" &&
+        !activeShortcut.query
+      ) {
+        e.preventDefault();
+        setActiveShortcut({
+          ...activeShortcut,
+          subMode: undefined,
+        });
+        setActiveIndex(3);
         return true;
       }
 

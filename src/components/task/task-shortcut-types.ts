@@ -4,6 +4,7 @@ export type ShortcutTrigger = "/" | "*" | "!" | "#" | "+";
 
 export interface ActiveShortcut {
   trigger: ShortcutTrigger;
+  subMode?: "repeat";
   query: string;
   startIndex: number;
   endIndex: number;

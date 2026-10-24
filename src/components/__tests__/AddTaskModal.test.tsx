@@ -233,6 +233,164 @@ describe("AddTaskModal", () => {
       expect(onTitleChange).toHaveBeenCalledWith("");
     });
 
+    it("shows date options with Repeat before No Date when typing '*'", () => {
+      render(<AddTaskModal {...defaultProps} title="" />);
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+
+      const options = screen
+        .getAllByRole("option")
+        .map((opt) => opt.textContent?.trim());
+      expect(options).toEqual([
+        "Today",
+        "Tomorrow",
+        "Next Week",
+        "Repeat",
+        "No Date",
+      ]);
+    });
+
+    it("transitions to repeat presets when selecting Repeat option without custom option", () => {
+      const onTitleChange = vi.fn();
+      const onRepeatChange = vi.fn();
+      render(
+        <AddTaskModal
+          {...defaultProps}
+          title=""
+          onTitleChange={onTitleChange}
+          onRepeatChange={onRepeatChange}
+        />,
+      );
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+
+      const repeatOption = screen.getByText("Repeat");
+      expect(repeatOption).toBeInTheDocument();
+      fireEvent.click(repeatOption);
+
+      const repeatPresets = screen
+        .getAllByRole("option")
+        .map((opt) => opt.textContent?.trim());
+      expect(repeatPresets).toEqual([
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Yearly",
+        "Weekdays",
+        "None",
+      ]);
+      expect(screen.queryByText(/custom/i)).not.toBeInTheDocument();
+
+      // Click "Daily"
+      const dailyOption = screen.getByText("Daily");
+      fireEvent.click(dailyOption);
+
+      expect(onRepeatChange).toHaveBeenCalledWith("daily");
+      expect(onTitleChange).toHaveBeenCalledWith("");
+    });
+
+    it("clears repeat when None is selected from repeat shortcut", () => {
+      const onTitleChange = vi.fn();
+      const onRepeatChange = vi.fn();
+      render(
+        <AddTaskModal
+          {...defaultProps}
+          title=""
+          repeat="daily"
+          onTitleChange={onTitleChange}
+          onRepeatChange={onRepeatChange}
+        />,
+      );
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+      fireEvent.click(screen.getByText("Repeat"));
+
+      const noneOption = screen.getByRole("option", { name: "None" });
+      expect(noneOption).toBeInTheDocument();
+      fireEvent.click(noneOption);
+
+      expect(onRepeatChange).toHaveBeenCalledWith("");
+      expect(onTitleChange).toHaveBeenCalledWith("");
+    });
+
+    it("allows navigating into Repeat with keyboard and returning with Backspace", () => {
+      render(<AddTaskModal {...defaultProps} title="" />);
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+
+      // Navigate down to Repeat (index 3)
+      fireEvent.keyDown(titleInput, { key: "ArrowDown" });
+      fireEvent.keyDown(titleInput, { key: "ArrowDown" });
+      fireEvent.keyDown(titleInput, { key: "ArrowDown" });
+
+      const repeatOption = screen.getByRole("option", { name: "Repeat" });
+      expect(repeatOption).toHaveAttribute("data-active", "true");
+
+      // Press Enter to enter repeat submode
+      fireEvent.keyDown(titleInput, { key: "Enter" });
+
+      expect(screen.getByText("Daily")).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Daily" })).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+
+      // Press Backspace with empty query -> returns to main date menu with Repeat active
+      fireEvent.keyDown(titleInput, { key: "Backspace" });
+
+      expect(screen.getByText("Today")).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Repeat" })).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+    });
+
+    it("filters repeat options when query is typed", () => {
+      render(<AddTaskModal {...defaultProps} title="" />);
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+      fireEvent.click(screen.getByText("Repeat"));
+
+      // In repeat submode, typing "w"
+      fireEvent.change(titleInput, {
+        target: { value: "*w", selectionEnd: 2 },
+      });
+
+      const filteredOptions = screen
+        .getAllByRole("option")
+        .map((opt) => opt.textContent?.trim());
+      expect(filteredOptions).toEqual(["Weekly", "Weekdays"]);
+    });
+
+    it("sets due date atomically when selecting a repeat shortcut preset when due date is unset", () => {
+      const onDueChange = vi.fn();
+      const onRepeatChange = vi.fn();
+      render(
+        <AddTaskModal
+          {...defaultProps}
+          title=""
+          due=""
+          repeat=""
+          onDueChange={onDueChange}
+          onRepeatChange={onRepeatChange}
+        />,
+      );
+      const titleInput = screen.getByPlaceholderText("Next thing to do");
+
+      fireEvent.change(titleInput, { target: { value: "*", selectionEnd: 1 } });
+      fireEvent.click(screen.getByText("Repeat"));
+
+      fireEvent.click(screen.getByText("Weekly"));
+
+      expect(onRepeatChange).toHaveBeenCalledWith("weekly");
+      expect(onDueChange).toHaveBeenCalled();
+    });
+
     it("shows project options when typing '+' and sets project", () => {
       const onTitleChange = vi.fn();
       const onProjectChange = vi.fn();

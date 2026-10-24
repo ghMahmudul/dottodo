@@ -44,15 +44,22 @@ function DialogContent({
   children,
   showCloseButton = true,
   closeButtonClassName,
+  viewportClassName,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
   closeButtonClassName?: string;
+  viewportClassName?: string;
 }) {
   return (
     <DialogPortal>
       <DialogOverlay />
-      <DialogPrimitive.Viewport className="fixed inset-0 z-50 grid place-items-center p-4 overflow-y-auto">
+      <DialogPrimitive.Viewport
+        className={cn(
+          "fixed inset-0 z-50 grid place-items-center p-4 overflow-y-auto",
+          viewportClassName,
+        )}
+      >
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(

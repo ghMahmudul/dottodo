@@ -28,6 +28,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
       <DialogContent
         initialFocus={isMobile ? false : undefined}
         closeButtonClassName={isMobile ? "top-4 right-5" : undefined}
+        viewportClassName={isMobile ? "p-0" : undefined}
         className={cn(
           isMobile
             ? "inset-0 top-0 left-0 translate-x-0 translate-y-0 w-full max-w-none h-dvh rounded-none ring-0 border-0 shadow-none"
